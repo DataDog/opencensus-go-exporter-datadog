@@ -1,7 +1,8 @@
 // Package datadog contains a Datadog exporter.
 //
 // This exporter is currently work in progress
-package datadog 
+package datadog
+
 // import "go.opencensus.io/exporter/datadog"
 
 import (
@@ -12,38 +13,38 @@ import (
 	"sync"
 
 	//"go.opencensus.io/internal"
+	"github.com/DataDog/datadog-go/statsd"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
-	"github.com/DataDog/datadog-go/statsd"
 )
 
 // Exporter exports stats to Datadog
-type Exporter struct{
-	opts		Options
-	c			*collector
-	d			*statsd.Client
+type Exporter struct {
+	opts Options
+	c    *collector
+	d    *statsd.Client
 }
 
 // Options contains options for configuring the exporter
 type Options struct {
 	// Namespace to prepend to all metrics
-	Namespace 	string
+	Namespace string
 
 	// Endpoint
-	Endpoint 	string
+	Endpoint string
 
 	// OnError is the hook to be called when there is
 	// an error occurred when uploading the stats data.
 	// If no custom hook is set, errors are logged.
 	// Optional.
-	OnError		func(err error)
+	OnError func(err error)
 
 	// Tags are global tags added to each metric
-	Tags	[]string
+	Tags []string
 }
 
 var (
-	newExporterOnce sync.Once
+	newExporterOnce      sync.Once
 	errSingletonExporter = errors.New("expecting only one exporter per instance")
 )
 
@@ -64,7 +65,7 @@ func newExporter(o Options) (*Exporter, error) {
 	}
 
 	fmt.Printf(endpoint)
-	
+
 	// client, err := statsd.New(o.Endpoint)
 	client, err := statsd.New(endpoint)
 	if err != nil {
@@ -73,36 +74,36 @@ func newExporter(o Options) (*Exporter, error) {
 	collector := newCollector(o)
 
 	e := &Exporter{
-		opts: 		o,
-		c:			collector,
-	 	d:			client,
+		opts: o,
+		c:    collector,
+		d:    client,
 	}
 	return e, nil
 }
 
 // client implements datadog.Client
 type collector struct {
-	opts		Options
+	opts Options
 
 	// mu guards all the fields.
-	mu			sync.Mutex
+	mu sync.Mutex
 
-	skipErrors 	bool
+	skipErrors bool
 
 	// viewData is accumulated and appended on every Export
 	// invocation from stats.
-	viewData	map[string]*view.Data
+	viewData map[string]*view.Data
 
-	viewsMu		sync.Mutex
+	viewsMu sync.Mutex
 
-	registeredViews	map[string]string
+	registeredViews map[string]string
 }
 
 func newCollector(o Options) *collector {
 	return &collector{
-		opts:				o,
-		registeredViews:	make(map[string]string),
-		viewData:			make(map[string]*view.Data),
+		opts:            o,
+		registeredViews: make(map[string]string),
+		viewData:        make(map[string]*view.Data),
 	}
 }
 
@@ -165,17 +166,16 @@ func (c *collector) addViewData(vd *view.Data, client *statsd.Client) {
 	for _, row := range vd.Rows {
 		submitMetric(client, vd.View, row)
 	}
-	fmt.Printf("viewData added: %v %v\n", vd.View.Name, (*vd.View).Measure.Unit())
 }
 
 func submitMetric(client *statsd.Client, v *view.View, row *view.Row) error {
 	var tags []string
 	tags = append(tags, "source:Opencensus")
 	rate := 1
+	var err error
 
 	switch data := row.Data.(type) {
 	case *view.CountData:
-		fmt.Printf("count %v\n", data.Value)
 		return client.Gauge(v.Name, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
 
 	case *view.SumData:
@@ -185,9 +185,23 @@ func submitMetric(client *statsd.Client, v *view.View, row *view.Row) error {
 		return client.Gauge(v.Name, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
 
 	case *view.DistributionData:
-		fmt.Printf("distribution %v\n", data.SumOfSquaredDev)
-		return client.Histogram(v.Name, float64(data.SumOfSquaredDev), tagMetrics(row.Tags, tags), float64(rate))
+		var metrics = map[string]float64{
+			"min":             data.Min,
+			"max":             data.Max,
+			"count":           float64(data.Count),
+			"avg":             data.Mean,
+			"squared_dev_sum": data.SumOfSquaredDev,
+		}
 
+		for name, value := range metrics {
+			err = client.Gauge(v.Name+"."+name, value, tagMetrics(row.Tags, tags), float64(rate))
+		}
+
+		for x := range data.CountPerBucket {
+			bucketTags := append(tags, "bucket_idx"+fmt.Sprint(x))
+			err = client.Gauge(v.Name+".count_per_bucket", float64(data.CountPerBucket[x]), tagMetrics(row.Tags, bucketTags), float64(rate))
+		}
+		return err
 	default:
 		return fmt.Errorf("aggregation %T is not supported", v.Aggregation)
 	}
@@ -201,11 +215,10 @@ func tagMetrics(t []tag.Tag, ct []string) []string {
 	for _, ctag := range ct {
 		finaltag = append(names, ctag)
 	}
-	fmt.Printf("tags: %v\n", finaltag)
 	return finaltag
 }
 
-func (o* Options) onError(err error) {
+func (o *Options) onError(err error) {
 	if o.OnError != nil {
 		o.OnError(err)
 	} else {
