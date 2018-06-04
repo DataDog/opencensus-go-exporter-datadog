@@ -20,9 +20,9 @@ import (
 
 // Exporter exports stats to Datadog
 type Exporter struct {
-	opts Options
-	c    *collector
-	d    *statsd.Client
+	opts      Options
+	collector *collector
+	client    *statsd.Client
 }
 
 // Options contains options for configuring the exporter
@@ -30,8 +30,11 @@ type Options struct {
 	// Namespace to prepend to all metrics
 	Namespace string
 
-	// Endpoint
-	Endpoint string
+	// Host for DogStatsD connection
+	Host string
+
+	// Port for DogStatsD connection
+	Port string
 
 	// OnError is the hook to be called when there is
 	// an error occurred when uploading the stats data.
@@ -58,15 +61,22 @@ func NewExporter(o Options) (*Exporter, error) {
 	return exporter, err
 }
 
-func newExporter(o Options) (*Exporter, error) {
-	endpoint := o.Endpoint
-	if endpoint == "" {
+func getEndpoint(o Options) string {
+	var endpoint string
+	if o.Host != "" && o.Port != "" {
+		endpoint = o.Host + ":" + o.Port
+	} else {
 		endpoint = "127.0.0.1:8125"
 	}
 
-	fmt.Printf(endpoint)
+	log.Printf("Endpoint set at: %v", endpoint)
+	return endpoint
+}
 
-	// client, err := statsd.New(o.Endpoint)
+func newExporter(o Options) (*Exporter, error) {
+
+	endpoint := getEndpoint(o)
+
 	client, err := statsd.New(endpoint)
 	if err != nil {
 		log.Fatal(err)
@@ -74,9 +84,9 @@ func newExporter(o Options) (*Exporter, error) {
 	collector := newCollector(o)
 
 	e := &Exporter{
-		opts: o,
-		c:    collector,
-		d:    client,
+		opts:      o,
+		collector: collector,
+		client:    client,
 	}
 	return e, nil
 }
@@ -112,7 +122,7 @@ func (e *Exporter) ExportView(vd *view.Data) {
 	if len(vd.Rows) == 0 {
 		return
 	}
-	e.c.addViewData(vd, e.d)
+	e.collector.addViewData(vd, e.client)
 }
 
 func (c *collector) registerViews(views ...*view.View) {

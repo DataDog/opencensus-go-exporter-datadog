@@ -23,7 +23,7 @@ var (
 func main() {
 	ctx := context.Background()
 
-	exporter, err := datadog.NewExporter(datadog.Options{})
+	exporter, err := datadog.NewExporter(datadog.Options{Host: "", Port: ""})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,8 +31,6 @@ func main() {
 
 	// Create view to see the number of processed videos cumulatively.
 	// Create view to see the amount of video processed
-	// Subscribe will allow view data to be exported.
-	// Once no longer needed, you can unsubscribe from the view.
 	if err = view.Register(
 		&view.View{
 			Name:        "video_count",
