@@ -1,4 +1,5 @@
-package main 
+package main
+
 // import "go.opencensus.io/examples/exporter"
 
 import (
@@ -11,6 +12,7 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 )
+
 // Create measures. The program will record measures for the size of
 // processed videos and the number of videos marked as spam.
 var (
@@ -21,7 +23,7 @@ var (
 func main() {
 	ctx := context.Background()
 
-	exporter, err := datadog.NewExporter(datadog.Options{Tags: []string{"Christine"}})
+	exporter, err := datadog.NewExporter(datadog.Options{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -52,10 +54,10 @@ func main() {
 	view.SetReportingPeriod(1 * time.Second)
 
 	// Record some data points...
-		for true {
-			log.Printf("recording...\n")
-			stats.Record(ctx, videoCount.M(1), videoSize.M(rand.Int63()))
-			<-time.After(time.Millisecond * time.Duration(1+rand.Intn(400)))
-		}
-	
+	for true {
+		log.Printf("recording...\n")
+		stats.Record(ctx, videoCount.M(1), videoSize.M(rand.Int63()))
+		<-time.After(time.Millisecond * time.Duration(1+rand.Intn(400)))
+	}
+
 }
