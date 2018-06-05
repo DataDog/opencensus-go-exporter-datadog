@@ -1,3 +1,8 @@
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2018 Datadog, Inc.
+
 // Package datadog contains a Datadog exporter.
 //
 // This exporter is currently work in progress
@@ -10,9 +15,10 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
+	"strings"
 	"sync"
 
-	//"go.opencensus.io/internal"
 	"github.com/DataDog/datadog-go/statsd"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -46,15 +52,22 @@ type Options struct {
 	Tags []string
 }
 
+const (
+	defaultHost   = "localhost"
+	defaultPort   = "8125"
+	opencensusTag = "source:Opencensus"
+)
+
 var (
 	newExporterOnce      sync.Once
 	errSingletonExporter = errors.New("expecting only one exporter per instance")
+	err                  = errSingletonExporter
+	exporter             *Exporter
+	tags                 = []string{opencensusTag}
 )
 
 // NewExporter returns an exporter that exports stats to Datadog
 func NewExporter(o Options) (*Exporter, error) {
-	var err = errSingletonExporter
-	var exporter *Exporter
 	newExporterOnce.Do(func() {
 		exporter, err = newExporter(o)
 	})
@@ -63,12 +76,11 @@ func NewExporter(o Options) (*Exporter, error) {
 
 func getEndpoint(o Options) string {
 	var endpoint string
-	if o.Host != "" && o.Port != "" {
-		endpoint = o.Host + ":" + o.Port
-	} else {
-		endpoint = "127.0.0.1:8125"
+	host, port := o.Host, o.Port
+	if host == "" || port == "" {
+		host, port = defaultHost, defaultPort
 	}
-
+	endpoint = host + ":" + port
 	log.Printf("Endpoint set at: %v", endpoint)
 	return endpoint
 }
@@ -91,29 +103,10 @@ func newExporter(o Options) (*Exporter, error) {
 	return e, nil
 }
 
-// client implements datadog.Client
-type collector struct {
-	opts Options
-
-	// mu guards all the fields.
-	mu sync.Mutex
-
-	skipErrors bool
-
-	// viewData is accumulated and appended on every Export
-	// invocation from stats.
-	viewData map[string]*view.Data
-
-	viewsMu sync.Mutex
-
-	registeredViews map[string]string
-}
-
 func newCollector(o Options) *collector {
 	return &collector{
-		opts:            o,
-		registeredViews: make(map[string]string),
-		viewData:        make(map[string]*view.Data),
+		opts:     o,
+		viewData: make(map[string]*view.Data),
 	}
 }
 
@@ -125,35 +118,20 @@ func (e *Exporter) ExportView(vd *view.Data) {
 	e.collector.addViewData(vd, e.client)
 }
 
-func (c *collector) registerViews(views ...*view.View) {
-	count := 0
-	for _, view := range views {
-
-		sig := viewSignature(c.opts.Namespace, view)
-		c.viewsMu.Lock()
-		_, ok := c.registeredViews[sig]
-		c.viewsMu.Unlock()
-
-		if !ok {
-			metadata := view.Description
-			c.viewsMu.Lock()
-			c.registeredViews[sig] = metadata
-			c.viewsMu.Unlock()
-			count++
-		}
-	}
-	if count == 0 {
-		return
-	}
-}
-
 func viewName(namespace string, v *view.View) string {
-	var name string
 	if namespace != "" {
-		name = namespace + "."
+		namespace = strings.Replace(namespace, " ", "", -1)
 	}
-	//return name + internal.Sanitize(v.Name)
-	return name + v.Name
+	names := []string{namespace, v.Name}
+	// Replace all non-alphanumerical characters to underscore
+	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
+	if err != nil {
+		log.Fatal(err)
+	}
+	for x := range names {
+		names[x] = reg.ReplaceAllString(names[x], "_")
+	}
+	return names[0] + "." + names[1]
 }
 
 func viewSignature(namespace string, v *view.View) string {
@@ -166,33 +144,31 @@ func viewSignature(namespace string, v *view.View) string {
 }
 
 func (c *collector) addViewData(vd *view.Data, client *statsd.Client) {
-	c.registerViews(vd.View)
 	sig := viewSignature(c.opts.Namespace, vd.View)
 
 	c.mu.Lock()
 	c.viewData[sig] = vd
+	fmt.Println(c.viewData[sig])
 	c.mu.Unlock()
 
 	for _, row := range vd.Rows {
-		submitMetric(client, vd.View, row)
+		submitMetric(client, vd.View, row, sig)
 	}
 }
 
-func submitMetric(client *statsd.Client, v *view.View, row *view.Row) error {
-	var tags []string
-	tags = append(tags, "source:Opencensus")
+func submitMetric(client *statsd.Client, v *view.View, row *view.Row, metricName string) error {
 	rate := 1
 	var err error
 
 	switch data := row.Data.(type) {
 	case *view.CountData:
-		return client.Gauge(v.Name, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
+		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
 
 	case *view.SumData:
-		return client.Gauge(v.Name, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
+		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
 
 	case *view.LastValueData:
-		return client.Gauge(v.Name, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
+		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
 
 	case *view.DistributionData:
 		var metrics = map[string]float64{
@@ -204,12 +180,12 @@ func submitMetric(client *statsd.Client, v *view.View, row *view.Row) error {
 		}
 
 		for name, value := range metrics {
-			err = client.Gauge(v.Name+"."+name, value, tagMetrics(row.Tags, tags), float64(rate))
+			err = client.Gauge(metricName+"."+name, value, tagMetrics(row.Tags, tags), float64(rate))
 		}
 
 		for x := range data.CountPerBucket {
 			bucketTags := append(tags, "bucket_idx"+fmt.Sprint(x))
-			err = client.Gauge(v.Name+".count_per_bucket", float64(data.CountPerBucket[x]), tagMetrics(row.Tags, bucketTags), float64(rate))
+			err = client.Gauge(metricName+".count_per_bucket", float64(data.CountPerBucket[x]), tagMetrics(row.Tags, bucketTags), float64(rate))
 		}
 		return err
 	default:

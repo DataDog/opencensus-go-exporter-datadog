@@ -1,6 +1,9 @@
-package main
+// Unless explicitly stated otherwise all files in this repository are licensed
+// under the Apache License Version 2.0.
+// This product includes software developed at Datadog (https://www.datadoghq.com/).
+// Copyright 2018 Datadog, Inc.
 
-// import "go.opencensus.io/examples/exporter"
+package main
 
 import (
 	"context"
@@ -8,7 +11,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/DataDog/Opencensus-dd-exporter"
+	datadog "github.com/DataDog/opencensus-go-exporter-datadog"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 )
@@ -23,7 +26,7 @@ var (
 func main() {
 	ctx := context.Background()
 
-	exporter, err := datadog.NewExporter(datadog.Options{Host: "", Port: ""})
+	exporter, err := datadog.NewExporter(datadog.Options{Host: "", Port: "", Namespace: "datadog_example"})
 	if err != nil {
 		log.Fatal(err)
 	}
