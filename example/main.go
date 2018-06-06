@@ -26,7 +26,7 @@ var (
 func main() {
 	ctx := context.Background()
 
-	exporter, err := datadog.NewExporter(datadog.Options{Host: "", Port: "", Namespace: "datadog_example"})
+	exporter, err := datadog.NewExporter(datadog.Options{Host: "", Port: "", Namespace: ""})
 	if err != nil {
 		log.Fatal(err)
 	}

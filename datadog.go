@@ -13,7 +13,6 @@ package datadog
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"log"
 	"regexp"
 	"strings"
@@ -28,7 +27,6 @@ import (
 type Exporter struct {
 	opts      Options
 	collector *collector
-	client    *statsd.Client
 }
 
 // Options contains options for configuring the exporter
@@ -74,7 +72,7 @@ func NewExporter(o Options) (*Exporter, error) {
 	return exporter, err
 }
 
-func getEndpoint(o Options) string {
+func (o *Options) getEndpoint() string {
 	var endpoint string
 	host, port := o.Host, o.Port
 	if host == "" || port == "" {
@@ -86,28 +84,24 @@ func getEndpoint(o Options) string {
 }
 
 func newExporter(o Options) (*Exporter, error) {
-
-	endpoint := getEndpoint(o)
+	endpoint := o.getEndpoint()
 
 	client, err := statsd.New(endpoint)
 	if err != nil {
 		log.Fatal(err)
 	}
-	collector := newCollector(o)
+
+	collector := &collector{
+		opts:     o,
+		viewData: make(map[string]*view.Data),
+		client:   client,
+	}
 
 	e := &Exporter{
 		opts:      o,
 		collector: collector,
-		client:    client,
 	}
 	return e, nil
-}
-
-func newCollector(o Options) *collector {
-	return &collector{
-		opts:     o,
-		viewData: make(map[string]*view.Data),
-	}
 }
 
 // ExportView exports to Datadog if view data has one or more rows.
@@ -115,82 +109,33 @@ func (e *Exporter) ExportView(vd *view.Data) {
 	if len(vd.Rows) == 0 {
 		return
 	}
-	e.collector.addViewData(vd, e.client)
+	e.collector.addViewData(vd)
 }
 
-func viewName(namespace string, v *view.View) string {
-	if namespace != "" {
-		namespace = strings.Replace(namespace, " ", "", -1)
-	}
-	names := []string{namespace, v.Name}
+func sanitizeString(str string) string {
 	// Replace all non-alphanumerical characters to underscore
 	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
 	if err != nil {
 		log.Fatal(err)
 	}
-	for x := range names {
-		names[x] = reg.ReplaceAllString(names[x], "_")
+	return reg.ReplaceAllString(str, "_")
+}
+
+func sanitizeMetricName(namespace string, v *view.View) string {
+	if namespace != "" {
+		namespace = strings.Replace(namespace, " ", "", -1)
+		return sanitizeString(namespace) + "." + sanitizeString(v.Name)
 	}
-	return names[0] + "." + names[1]
+	return sanitizeString(v.Name)
 }
 
 func viewSignature(namespace string, v *view.View) string {
 	var buf bytes.Buffer
-	buf.WriteString(viewName(namespace, v))
+	buf.WriteString(sanitizeMetricName(namespace, v))
 	for _, k := range v.TagKeys {
 		buf.WriteString("_" + k.Name())
 	}
 	return buf.String()
-}
-
-func (c *collector) addViewData(vd *view.Data, client *statsd.Client) {
-	sig := viewSignature(c.opts.Namespace, vd.View)
-
-	c.mu.Lock()
-	c.viewData[sig] = vd
-	fmt.Println(c.viewData[sig])
-	c.mu.Unlock()
-
-	for _, row := range vd.Rows {
-		submitMetric(client, vd.View, row, sig)
-	}
-}
-
-func submitMetric(client *statsd.Client, v *view.View, row *view.Row, metricName string) error {
-	rate := 1
-	var err error
-
-	switch data := row.Data.(type) {
-	case *view.CountData:
-		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
-
-	case *view.SumData:
-		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
-
-	case *view.LastValueData:
-		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
-
-	case *view.DistributionData:
-		var metrics = map[string]float64{
-			"min":             data.Min,
-			"max":             data.Max,
-			"count":           float64(data.Count),
-			"avg":             data.Mean,
-			"squared_dev_sum": data.SumOfSquaredDev,
-		}
-
-		for name, value := range metrics {
-			err = client.Gauge(metricName+"."+name, value, tagMetrics(row.Tags, tags), float64(rate))
-		}
-
-		for x := range data.CountPerBucket {
-			bucketTags := append(tags, "bucket_idx"+fmt.Sprint(x))
-			err = client.Gauge(metricName+".count_per_bucket", float64(data.CountPerBucket[x]), tagMetrics(row.Tags, bucketTags), float64(rate))
-		}
-		return err
-	default:
-		return fmt.Errorf("aggregation %T is not supported", v.Aggregation)
-	}
 }
 
 func tagMetrics(t []tag.Tag, ct []string) []string {
