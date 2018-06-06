@@ -22,7 +22,7 @@ func TestAddViewData(t *testing.T) {
 	view.SetReportingPeriod(reportPeriod)
 
 	expected := &view.Data{
-		View: newView("fooCount", view.Count()),
+		View: newView(view.Count()),
 	}
 	exporter.collector.addViewData(expected)
 	actual := exporter.collector.viewData["fooCount"]
@@ -30,24 +30,4 @@ func TestAddViewData(t *testing.T) {
 	if actual != expected {
 		t.Errorf("Expected: %v, Got: %v", expected, actual)
 	}
-}
-
-func TestMetricSubmitToStatsd(t *testing.T) {
-	exporter, err := newExporter(Options{})
-	if err != nil {
-		t.Fatalf("Failed to create datadog exporter: %v", err)
-	}
-
-	view.RegisterExporter(exporter)
-	reportPeriod := time.Millisecond
-	view.SetReportingPeriod(reportPeriod)
-	vd := &view.Data{
-		View: newView("fooCount", view.Count()),
-	}
-	sig := viewSignature("", vd.View)
-
-	for _, row := range vd.Rows {
-		exporter.collector.submitMetric(vd.View, row, sig)
-	}
-	t.Logf("testtttttttt")
 }
