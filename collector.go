@@ -42,16 +42,16 @@ func (c *collector) submitMetric(v *view.View, row *view.Row, metricName string)
 	rate := 1
 	var err error
 	client := c.client
-
+	customTags := c.opts.Tags
 	switch data := row.Data.(type) {
 	case *view.CountData:
-		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
+		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, customTags), float64(rate))
 
 	case *view.SumData:
-		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
+		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, customTags), float64(rate))
 
 	case *view.LastValueData:
-		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, tags), float64(rate))
+		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, customTags), float64(rate))
 
 	case *view.DistributionData:
 		var metrics = map[string]float64{
@@ -63,11 +63,11 @@ func (c *collector) submitMetric(v *view.View, row *view.Row, metricName string)
 		}
 
 		for name, value := range metrics {
-			err = client.Gauge(metricName+"."+name, value, tagMetrics(row.Tags, tags), float64(rate))
+			err = client.Gauge(metricName+"."+name, value, tagMetrics(row.Tags, customTags), float64(rate))
 		}
 
 		for x := range data.CountPerBucket {
-			bucketTags := append(tags, "bucket_idx"+fmt.Sprint(x))
+			bucketTags := append(customTags, "bucket_idx"+fmt.Sprint(x))
 			err = client.Gauge(metricName+".count_per_bucket", float64(data.CountPerBucket[x]), tagMetrics(row.Tags, bucketTags), float64(rate))
 		}
 		return err

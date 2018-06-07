@@ -6,9 +6,8 @@
 // Package datadog contains a Datadog exporter.
 //
 // This exporter is currently work in progress
+// and will eventually be imported as "go.opencensus.io/exporter/datadog"
 package datadog
-
-// import "go.opencensus.io/exporter/datadog"
 
 import (
 	"bytes"
@@ -23,10 +22,33 @@ import (
 	"go.opencensus.io/tag"
 )
 
+const (
+	defaultHost   = "localhost"
+	defaultPort   = "8125"
+	opencensusTag = "source:Opencensus"
+)
+
+var (
+	newExporterOnce      sync.Once
+	errSingletonExporter = errors.New("expecting only one exporter per instance")
+	err                  = errSingletonExporter
+	exporter             *Exporter
+	tags                 = []string{opencensusTag}
+	reg                  = regexp.MustCompile("[^a-zA-Z0-9]+")
+)
+
 // Exporter exports stats to Datadog
 type Exporter struct {
 	opts      Options
 	collector *collector
+}
+
+// ExportView exports to Datadog if view data has one or more rows.
+func (e *Exporter) ExportView(vd *view.Data) {
+	if len(vd.Rows) == 0 {
+		return
+	}
+	e.collector.addViewData(vd)
 }
 
 // Options contains options for configuring the exporter
@@ -50,40 +72,34 @@ type Options struct {
 	Tags []string
 }
 
-const (
-	defaultHost   = "localhost"
-	defaultPort   = "8125"
-	opencensusTag = "source:Opencensus"
-)
-
-var (
-	newExporterOnce      sync.Once
-	errSingletonExporter = errors.New("expecting only one exporter per instance")
-	err                  = errSingletonExporter
-	exporter             *Exporter
-	tags                 = []string{opencensusTag}
-)
-
-// NewExporter returns an exporter that exports stats to Datadog
-func NewExporter(o Options) (*Exporter, error) {
-	newExporterOnce.Do(func() {
-		exporter, err = newExporter(o)
-	})
-	return exporter, err
-}
-
+// getEndpoint determines the address for the statsD client
 func (o *Options) getEndpoint() string {
-	var endpoint string
 	host, port := o.Host, o.Port
 	if host == "" || port == "" {
 		host, port = defaultHost, defaultPort
 	}
-	endpoint = host + ":" + port
+	endpoint := host + ":" + port
 	log.Printf("Endpoint set at: %v", endpoint)
 	return endpoint
 }
 
-func newExporter(o Options) (*Exporter, error) {
+func (o *Options) onError(err error) {
+	if o.OnError != nil {
+		o.OnError(err)
+	} else {
+		log.Printf("Failed to export to Datadog: %v\n", err)
+	}
+}
+
+// NewExporter returns an exporter that exports stats to Datadog
+func NewExporter(o Options) *Exporter {
+	newExporterOnce.Do(func() {
+		exporter = newExporter(o)
+	})
+	return exporter
+}
+
+func newExporter(o Options) *Exporter {
 	endpoint := o.getEndpoint()
 
 	client, err := statsd.New(endpoint)
@@ -101,26 +117,16 @@ func newExporter(o Options) (*Exporter, error) {
 		opts:      o,
 		collector: collector,
 	}
-	return e, nil
+	return e
 }
 
-// ExportView exports to Datadog if view data has one or more rows.
-func (e *Exporter) ExportView(vd *view.Data) {
-	if len(vd.Rows) == 0 {
-		return
-	}
-	e.collector.addViewData(vd)
-}
-
+// sanitizeString replaces all non-alphanumerical characters to underscore
 func sanitizeString(str string) string {
-	// Replace all non-alphanumerical characters to underscore
-	reg, err := regexp.Compile("[^a-zA-Z0-9]+")
-	if err != nil {
-		log.Fatal(err)
-	}
 	return reg.ReplaceAllString(str, "_")
 }
 
+// sanitizeMetricName formats the custom namespace and view name to
+// Datadog's metric naming convention
 func sanitizeMetricName(namespace string, v *view.View) string {
 	if namespace != "" {
 		namespace = strings.Replace(namespace, " ", "", -1)
@@ -129,6 +135,7 @@ func sanitizeMetricName(namespace string, v *view.View) string {
 	return sanitizeString(v.Name)
 }
 
+// viewSignature creates the view signature with custom namespace
 func viewSignature(namespace string, v *view.View) string {
 	var buf bytes.Buffer
 	buf.WriteString(sanitizeMetricName(namespace, v))
@@ -138,21 +145,12 @@ func viewSignature(namespace string, v *view.View) string {
 	return buf.String()
 }
 
-func tagMetrics(t []tag.Tag, ct []string) []string {
-	var names, finaltag []string
-	for _, tag := range t {
-		names = append(names, tag.Key.Name())
-	}
-	for _, ctag := range ct {
-		finaltag = append(names, ctag)
+// tagMetrics concatenates user input custom tags with row tags
+func tagMetrics(rowTags []tag.Tag, customTags []string) []string {
+	var finaltag []string
+	for key := range rowTags {
+		finaltag = append(customTags,
+			rowTags[key].Key.Name()+":"+rowTags[key].Value)
 	}
 	return finaltag
-}
-
-func (o *Options) onError(err error) {
-	if o.OnError != nil {
-		o.OnError(err)
-	} else {
-		log.Printf("Failed to export to Datadog: %v\n", err)
-	}
 }

@@ -12,10 +12,7 @@ import (
 )
 
 func TestAddViewData(t *testing.T) {
-	exporter, err := newExporter(Options{})
-	if err != nil {
-		t.Fatalf("Failed to create datadog exporter: %v", err)
-	}
+	exporter := newExporter(Options{Namespace: "hello", Tags: []string{"test:optionalTag"}})
 
 	view.RegisterExporter(exporter)
 	reportPeriod := time.Millisecond
@@ -25,7 +22,7 @@ func TestAddViewData(t *testing.T) {
 		View: newView(view.Count()),
 	}
 	exporter.collector.addViewData(expected)
-	actual := exporter.collector.viewData["fooCount"]
+	actual := exporter.collector.viewData["hello.fooCount"]
 
 	if actual != expected {
 		t.Errorf("Expected: %v, Got: %v", expected, actual)
