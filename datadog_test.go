@@ -2,6 +2,7 @@
 // under the Apache License Version 2.0.
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2018 Datadog, Inc.
+
 package datadog
 
 import (
@@ -24,7 +25,7 @@ var (
 	measureSum   = stats.Int64("fooSum", "testing sum metrics", stats.UnitBytes)
 	measureLast  = stats.Int64("fooLast", "testing LastValueData metrics", stats.UnitBytes)
 	measureDist  = stats.Int64("fooHisto", "testing histogram metrics", stats.UnitDimensionless)
-	testTags     []tag.Tag
+	testTags     []tag.Key
 )
 
 func newView(agg *view.Aggregation) *view.View {
@@ -36,14 +37,16 @@ func newView(agg *view.Aggregation) *view.View {
 	}
 }
 
-func customNewView(measureName string, agg *view.Aggregation, measure *stats.Int64Measure) *view.View {
+func customNewView(measureName string, agg *view.Aggregation, tags []tag.Key, measure *stats.Int64Measure) *view.View {
 	return &view.View{
 		Name:        measureName,
 		Description: "fooDesc",
 		Measure:     measureCount,
+		TagKeys:     tags,
 		Aggregation: agg,
 	}
 }
+
 func TestExportView(t *testing.T) {
 	exporter := newExporter(Options{})
 
@@ -52,7 +55,7 @@ func TestExportView(t *testing.T) {
 	view.SetReportingPeriod(reportPeriod)
 
 	vd := &view.Data{
-		View: customNewView("fooCount", view.Count(), measureCount),
+		View: customNewView("fooCount", view.Count(), testTags, measureCount),
 	}
 	if err := view.Register(vd.View); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)
@@ -88,7 +91,7 @@ func TestSanitizeString(t *testing.T) {
 func TestSanitizeMetricName(t *testing.T) {
 	namespace1 := "opencensus"
 	vd := &view.Data{
-		View: customNewView("fooGauge", view.Count(), measureCount),
+		View: customNewView("fooGauge", view.Count(), testTags, measureCount),
 	}
 
 	res := sanitizeMetricName(namespace1, vd.View)
@@ -99,7 +102,7 @@ func TestSanitizeMetricName(t *testing.T) {
 
 	namespace2 := "data!doge"
 	vd2 := &view.Data{
-		View: customNewView("bar-Sum", view.Sum(), measureSum),
+		View: customNewView("bar-Sum", view.Sum(), testTags, measureSum),
 	}
 	exp2 := "data_doge.bar_Sum"
 	res2 := sanitizeMetricName(namespace2, vd2.View)
@@ -110,13 +113,15 @@ func TestSanitizeMetricName(t *testing.T) {
 }
 
 func TestSignature(t *testing.T) {
+	key, _ := tag.NewKey("signature")
 	namespace := "opencensus"
+	tags := append(testTags, key)
 	vd := &view.Data{
-		View: customNewView("fooGauge", view.Count(), measureCount),
+		View: customNewView("fooGauge", view.Count(), tags, measureCount),
 	}
 
 	res := viewSignature(namespace, vd.View)
-	exp := "opencensus.fooGauge"
+	exp := "opencensus.fooGauge_signature"
 	if res != exp {
 		t.Errorf("Expected: %v, Got: %v\n", exp, res)
 	}
@@ -124,7 +129,7 @@ func TestSignature(t *testing.T) {
 
 func TestTagMetrics(t *testing.T) {
 	key, _ := tag.NewKey("testTags")
-	tags := append(testTags, tag.Tag{Key: key, Value: "Metrics"})
+	tags := []tag.Tag{tag.Tag{Key: key, Value: "Metrics"}}
 	customTag := []string{"program_name:main"}
 	result := tagMetrics(tags, customTag)
 	expected := []string{"program_name:main", "testTags:Metrics"}
@@ -150,7 +155,7 @@ func TestOnErrorNil(t *testing.T) {
 	result := buf.String()
 	expected := "Failed to export to Datadog: <nil>"
 	if !strings.Contains(result, expected) {
-		t.Errorf("Expected: %v, Got: %v\n", result, expected)
+		t.Errorf("Expected: %v, Got: %v\n", expected, result)
 	}
 }
 
@@ -188,7 +193,7 @@ func TestCountData(t *testing.T) {
 	view.SetReportingPeriod(reportPeriod)
 
 	vd := &view.Data{
-		View: customNewView("fooCount", view.Count(), measureCount),
+		View: customNewView("fooCount", view.Count(), testTags, measureCount),
 	}
 	if err := view.Register(vd.View); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)
@@ -215,7 +220,7 @@ func TestSumData(t *testing.T) {
 	view.SetReportingPeriod(reportPeriod)
 
 	vd := &view.Data{
-		View: customNewView("fooSum", view.Sum(), measureSum),
+		View: customNewView("fooSum", view.Sum(), testTags, measureSum),
 	}
 	if err := view.Register(vd.View); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)
@@ -242,7 +247,7 @@ func TestLastValueData(t *testing.T) {
 	view.SetReportingPeriod(reportPeriod)
 
 	vd := &view.Data{
-		View: customNewView("fooLast", view.LastValue(), measureLast),
+		View: customNewView("fooLast", view.LastValue(), testTags, measureLast),
 	}
 	if err := view.Register(vd.View); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)
@@ -260,6 +265,7 @@ func TestLastValueData(t *testing.T) {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
 }
+
 func TestHistogram(t *testing.T) {
 	exporter := newExporter(Options{})
 
@@ -268,7 +274,7 @@ func TestHistogram(t *testing.T) {
 	view.SetReportingPeriod(reportPeriod)
 
 	vd := &view.Data{
-		View: customNewView("fooHisto", view.Distribution(), measureDist),
+		View: customNewView("fooHisto", view.Distribution(), testTags, measureDist),
 	}
 	if err := view.Register(vd.View); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)

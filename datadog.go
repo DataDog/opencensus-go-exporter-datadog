@@ -4,18 +4,12 @@
 // Copyright 2018 Datadog, Inc.
 
 // Package datadog contains a Datadog exporter.
-//
-// This exporter is currently work in progress
-// and will eventually be imported as "go.opencensus.io/exporter/datadog"
 package datadog
 
 import (
-	"bytes"
-	"errors"
 	"log"
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/DataDog/datadog-go/statsd"
 	"go.opencensus.io/stats/view"
@@ -29,15 +23,12 @@ const (
 )
 
 var (
-	newExporterOnce      sync.Once
-	errSingletonExporter = errors.New("expecting only one exporter per instance")
-	err                  = errSingletonExporter
-	exporter             *Exporter
-	tags                 = []string{opencensusTag}
-	reg                  = regexp.MustCompile("[^a-zA-Z0-9]+")
+	exporter *Exporter
+	tags     = []string{opencensusTag}
+	reg      = regexp.MustCompile("[^a-zA-Z0-9]+")
 )
 
-// Exporter exports stats to Datadog
+// Exporter exports stats to Datadog.
 type Exporter struct {
 	opts      Options
 	collector *collector
@@ -51,9 +42,9 @@ func (e *Exporter) ExportView(vd *view.Data) {
 	e.collector.addViewData(vd)
 }
 
-// Options contains options for configuring the exporter
+// Options contains options for configuring the exporter.
 type Options struct {
-	// Namespace to prepend to all metrics
+	// Namespace specifies the namespace to which metrics are appended.
 	Namespace string
 
 	// Host for DogStatsD connection
@@ -62,13 +53,11 @@ type Options struct {
 	// Port for DogStatsD connection
 	Port string
 
-	// OnError is the hook to be called when there is
-	// an error occurred when uploading the stats data.
-	// If no custom hook is set, errors are logged.
-	// Optional.
+	// OnError will be called in the case of an error while uploading the stats.
+	// If not set, errors are simply logged.
 	OnError func(err error)
 
-	// Tags are global tags added to each metric
+	// Tags specifies a set of global tags to attach to each metric.
 	Tags []string
 }
 
@@ -79,7 +68,6 @@ func (o *Options) getEndpoint() string {
 		host, port = defaultHost, defaultPort
 	}
 	endpoint := host + ":" + port
-	log.Printf("Endpoint set at: %v", endpoint)
 	return endpoint
 }
 
@@ -93,9 +81,10 @@ func (o *Options) onError(err error) {
 
 // NewExporter returns an exporter that exports stats to Datadog
 func NewExporter(o Options) *Exporter {
-	newExporterOnce.Do(func() {
-		exporter = newExporter(o)
-	})
+	exporter = newExporter(o)
+	if exporter == nil {
+		log.Fatalf("Exporter not initialized")
+	}
 	return exporter
 }
 
@@ -137,7 +126,7 @@ func sanitizeMetricName(namespace string, v *view.View) string {
 
 // viewSignature creates the view signature with custom namespace
 func viewSignature(namespace string, v *view.View) string {
-	var buf bytes.Buffer
+	var buf strings.Builder
 	buf.WriteString(sanitizeMetricName(namespace, v))
 	for _, k := range v.TagKeys {
 		buf.WriteString("_" + k.Name())
