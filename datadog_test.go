@@ -133,14 +133,15 @@ func TestSignature(t *testing.T) {
 }
 
 func TestTagMetrics(t *testing.T) {
+	o := Options{}
 	key, _ := tag.NewKey("testTags")
 	tags := []tag.Tag{tag.Tag{Key: key, Value: "Metrics"}}
 	customTag := []string{"program_name:main"}
-	result := tagMetrics(tags, customTag)
-	expected := []string{"program_name:main", "testTags:Metrics"}
+	result := o.tagMetrics(tags, customTag)
+	expected := []string{"testTags:Metrics", "program_name:main"}
 
 	if n := len(expected); n == 0 {
-		t.Fatal("got o")
+		t.Fatal("got 0")
 	}
 
 	if !reflect.DeepEqual(expected, result) {
