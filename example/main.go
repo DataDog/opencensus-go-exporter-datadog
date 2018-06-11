@@ -26,15 +26,13 @@ var (
 func main() {
 	ctx := context.Background()
 
-	exporter, err := datadog.NewExporter(datadog.Options{Host: "", Port: "", Namespace: ""})
-	if err != nil {
-		log.Fatal(err)
-	}
+	exporter := datadog.NewExporter(datadog.Options{})
+
 	view.RegisterExporter(exporter)
 
 	// Create view to see the number of processed videos cumulatively.
 	// Create view to see the amount of video processed
-	if err = view.Register(
+	view.Register(
 		&view.View{
 			Name:        "video_count",
 			Description: "number of videos processed over time",
@@ -47,15 +45,13 @@ func main() {
 			Measure:     videoSize,
 			Aggregation: view.Distribution(0, 1<<16, 1<<32),
 		},
-	); err != nil {
-		log.Fatalf("Cannot subscribe to the view: %v\n", err)
-	}
+	)
 
 	// Set reporting period to report data at every second.
 	view.SetReportingPeriod(1 * time.Second)
 
-	// Record some data points...
-	for true {
+	// Record some measures...
+	for {
 		log.Printf("recording...\n")
 		stats.Record(ctx, videoCount.M(1), videoSize.M(rand.Int63()))
 		<-time.After(time.Millisecond * time.Duration(1+rand.Intn(400)))

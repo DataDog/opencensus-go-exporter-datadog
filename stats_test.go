@@ -14,41 +14,37 @@ import (
 	"go.opencensus.io/tag"
 )
 
+func testExporter(opts Options) *Exporter {
+	e := NewExporter(opts)
+	view.RegisterExporter(e)
+	view.SetReportingPeriod(time.Millisecond)
+	return e
+}
+
 func TestAddViewData(t *testing.T) {
-	exporter := newExporter(Options{Namespace: "hello", Tags: []string{"test:optionalTag"}})
-
-	view.RegisterExporter(exporter)
-	reportPeriod := time.Millisecond
-	view.SetReportingPeriod(reportPeriod)
-
+	exporter := testExporter(Options{Namespace: "hello", Tags: []string{"test:optionalTag"}})
 	expected := &view.Data{
 		View: newView(view.Count()),
 	}
-	exporter.collector.addViewData(expected)
-	actual := exporter.collector.viewData["hello.fooCount"]
-
+	exporter.statsExporter.addViewData(expected)
+	actual := exporter.statsExporter.viewData["hello.fooCount"]
 	if actual != expected {
 		t.Errorf("Expected: %v, Got: %v", expected, actual)
 	}
 }
+
 func TestNilAggregation(t *testing.T) {
-	exporter := newExporter(Options{})
-	view.RegisterExporter(exporter)
-	reportPeriod := time.Millisecond
-	view.SetReportingPeriod(reportPeriod)
+	exporter := testExporter(Options{})
 	noneAgg := &view.Aggregation{
 		Type:    view.AggTypeNone,
 		Buckets: []float64{1},
 	}
-	vd := &view.Data{
-		View: customNewView("fooNone", noneAgg, testTags, measureCount),
-	}
+	v := newCustomView("fooNone", noneAgg, testTags, measureCount)
 	row := &view.Row{
 		Tags: []tag.Tag{},
 	}
-	actual := exporter.collector.submitMetric(vd.View, row, "fooNone")
+	actual := exporter.statsExporter.submitMetric(v, row, "fooNone")
 	if actual == nil {
 		t.Errorf("Expected: %v, Got: %v", fmt.Errorf("aggregation *view.Aggregation is not supported"), actual)
 	}
-
 }

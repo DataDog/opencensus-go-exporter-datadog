@@ -7,42 +7,56 @@ package datadog
 
 import (
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/DataDog/datadog-go/statsd"
 	"go.opencensus.io/stats/view"
 )
 
-const rate = float64(1)
-
-// client implements datadog.Client
-type collector struct {
-	opts Options
-
-	// mu guards viewData
-	mu sync.Mutex
-
-	// viewData maps namespaces to their view data.
+// collector implements statsd.Client
+type statsExporter struct {
+	opts     Options
+	mu       sync.Mutex // mu guards viewData
+	client   *statsd.Client
 	viewData map[string]*view.Data
-
-	client *statsd.Client
 }
 
-func (c *collector) addViewData(vd *view.Data) {
-	sig := viewSignature(c.opts.Namespace, vd.View)
-	c.mu.Lock()
-	c.viewData[sig] = vd
-	c.mu.Unlock()
+func newStatsExporter(o Options) *statsExporter {
+	endpoint := o.StatsAddr
+	if endpoint == "" {
+		endpoint = defaultEndpoint
+	}
 
-	for _, row := range vd.Rows {
-		c.submitMetric(vd.View, row, sig)
+	client, err := statsd.New(endpoint)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return &statsExporter{
+		opts:     o,
+		viewData: make(map[string]*view.Data),
+		client:   client,
 	}
 }
 
-func (c *collector) submitMetric(v *view.View, row *view.Row, metricName string) error {
+func (s *statsExporter) addViewData(vd *view.Data) {
+	sig := viewSignature(s.opts.Namespace, vd.View)
+	s.mu.Lock()
+	s.viewData[sig] = vd
+	s.mu.Unlock()
+
+	for _, row := range vd.Rows {
+		s.submitMetric(vd.View, row, sig)
+	}
+}
+
+func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName string) error {
 	var err error
-	client := c.client
-	customTags := c.opts.Tags
+	const rate = float64(1)
+	client := s.client
+	customTags := s.opts.Tags
+
 	switch data := row.Data.(type) {
 	case *view.CountData:
 		return client.Gauge(metricName, float64(data.Value), tagMetrics(row.Tags, customTags), rate)

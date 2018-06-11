@@ -9,8 +9,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -37,7 +39,7 @@ func newView(agg *view.Aggregation) *view.View {
 	}
 }
 
-func customNewView(measureName string, agg *view.Aggregation, tags []tag.Key, measure *stats.Int64Measure) *view.View {
+func newCustomView(measureName string, agg *view.Aggregation, tags []tag.Key, measure *stats.Int64Measure) *view.View {
 	return &view.View{
 		Name:        measureName,
 		Description: "fooDesc",
@@ -48,14 +50,11 @@ func customNewView(measureName string, agg *view.Aggregation, tags []tag.Key, me
 }
 
 func TestExportView(t *testing.T) {
-	exporter := newExporter(Options{})
-
-	view.RegisterExporter(exporter)
 	reportPeriod := time.Millisecond
-	view.SetReportingPeriod(reportPeriod)
+	exporter := testExporter(Options{})
 
 	vd := &view.Data{
-		View: customNewView("fooCount", view.Count(), testTags, measureCount),
+		View: newCustomView("fooCount", view.Count(), testTags, measureCount),
 	}
 	if err := view.Register(vd.View); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)
@@ -68,47 +67,53 @@ func TestExportView(t *testing.T) {
 	stats.Record(ctx, measureCount.M(1))
 	<-time.After(10 * time.Millisecond)
 
-	actual := exporter.collector.viewData["fooCount"].View
+	actual := exporter.statsExporter.viewData["fooCount"].View
 	if actual != vd.View {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
 }
 
 func TestSanitizeString(t *testing.T) {
-	str1 := sanitizeString("data-234_123!doge")
-	sanStr1 := "data_234_123_doge"
-	if str1 != sanStr1 {
-		t.Errorf("Expected: %v, Got: %v\n", str1, sanStr1)
+	testCases := []struct {
+		input string
+		want  string
+	}{
+		{"data-234_123!doge", "data_234_123_doge"},
+		{"hello!good@morn#ing$test%", "hello_good_morn_ing_test_"},
 	}
-
-	str2 := sanitizeString("hello!good@morn#ing$test%")
-	sanStr2 := "hello_good_morn_ing_test_"
-	if str2 != sanStr2 {
-		t.Errorf("Expected: %v, Got: %v\n", str1, sanStr1)
+	for _, tc := range testCases {
+		t.Run(tc.input, func(t *testing.T) {
+			got := sanitizeString(tc.input)
+			if got != tc.want {
+				t.Errorf("Expected: %v, Got: %v\n", tc.want, got)
+			}
+		})
 	}
 }
 
 func TestSanitizeMetricName(t *testing.T) {
-	namespace1 := "opencensus"
-	vd := &view.Data{
-		View: customNewView("fooGauge", view.Count(), testTags, measureCount),
+	vd1 := &view.Data{
+		View: newCustomView("fooGauge", view.Count(), testTags, measureCount),
 	}
-
-	res := sanitizeMetricName(namespace1, vd.View)
-	exp := "opencensus.fooGauge"
-	if res != exp {
-		t.Errorf("Expected: %v, Got: %v\n", exp, res)
-	}
-
-	namespace2 := "data!doge"
 	vd2 := &view.Data{
-		View: customNewView("bar-Sum", view.Sum(), testTags, measureSum),
+		View: newCustomView("bar-Sum", view.Sum(), testTags, measureSum),
 	}
-	exp2 := "data_doge.bar_Sum"
-	res2 := sanitizeMetricName(namespace2, vd2.View)
 
-	if res2 != exp2 {
-		t.Errorf("Expected: %v, Got: %v\n", exp2, res2)
+	testCases := []struct {
+		namespace string
+		view      *view.Data
+		want      string
+	}{
+		{"opencensus", vd1, "opencensus.fooGauge"},
+		{"data!doge", vd2, "data_doge.bar_Sum"},
+	}
+	for _, tc := range testCases {
+		t.Run("Testing sanitizeMetricName", func(t *testing.T) {
+			got := sanitizeMetricName(tc.namespace, tc.view.View)
+			if got != tc.want {
+				t.Errorf("Expected: %v, Got: %v\n", tc.want, got)
+			}
+		})
 	}
 }
 
@@ -117,7 +122,7 @@ func TestSignature(t *testing.T) {
 	namespace := "opencensus"
 	tags := append(testTags, key)
 	vd := &view.Data{
-		View: customNewView("fooGauge", view.Count(), tags, measureCount),
+		View: newCustomView("fooGauge", view.Count(), tags, measureCount),
 	}
 
 	res := viewSignature(namespace, vd.View)
@@ -134,71 +139,51 @@ func TestTagMetrics(t *testing.T) {
 	result := tagMetrics(tags, customTag)
 	expected := []string{"program_name:main", "testTags:Metrics"}
 
-	if !(expected == nil && result == nil) && len(expected) == len(result) {
-		for i := range result {
-			if result[i] != expected[i] {
-				t.Errorf("Expected: %v, Got: %v\n", result, expected)
-			}
-		}
+	if n := len(expected); n == 0 {
+		t.Fatal("got o")
+	}
+
+	if !reflect.DeepEqual(expected, result) {
+		t.Fatalf("Expected: %v, Got: %v\n", expected, result)
 	}
 }
 
 func TestOnErrorNil(t *testing.T) {
-	opt := &Options{}
-
 	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	defer func() {
-		log.SetOutput(os.Stderr)
-	}()
-	opt.onError(nil)
-	result := buf.String()
-	expected := "Failed to export to Datadog: <nil>"
-	if !strings.Contains(result, expected) {
-		t.Errorf("Expected: %v, Got: %v\n", expected, result)
-	}
-}
-
-func TestOnError(t *testing.T) {
-	expected := "Testing error"
-	testError := errors.New(expected)
 	opt := &Options{}
+	testError := errors.New("Testing error")
 
-	var buf bytes.Buffer
-	log.SetOutput(&buf)
-	defer func() {
-		log.SetOutput(os.Stderr)
-	}()
-	opt.onError(testError)
-	result := buf.String()
-	if !strings.Contains(result, expected) {
-		t.Errorf("Expected: %v, Got: %v\n", result, expected)
+	testCases := []struct {
+		input error
+		want  string
+	}{
+		{nil, fmt.Sprintf("Failed to export to Datadog: %v", nil)},
+		{testError, "Testing error"},
 	}
-}
-
-func TestNewExporter(t *testing.T) {
-	opt := Options{}
-	exp := NewExporter(opt)
-	actual := exp.collector.client
-	if actual == nil {
-		t.Errorf("Expected DogstatsD Client got: %v\n", nil)
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("Testing error: %v\n", tc.input), func(t *testing.T) {
+			log.SetOutput(&buf)
+			defer func() {
+				log.SetOutput(os.Stderr)
+			}()
+			opt.onError(tc.input)
+			got := buf.String()
+			if !strings.Contains(got, tc.want) {
+				t.Errorf("expected: %v, got: %v\n", tc.want, got)
+			}
+		})
 	}
 }
 
 func TestCountData(t *testing.T) {
-	exporter := newExporter(Options{})
-
-	view.RegisterExporter(exporter)
 	reportPeriod := time.Millisecond
-	view.SetReportingPeriod(reportPeriod)
+	exporter := testExporter(Options{})
 
-	vd := &view.Data{
-		View: customNewView("fooCount", view.Count(), testTags, measureCount),
-	}
-	if err := view.Register(vd.View); err != nil {
+	vd := newCustomView("fooCount", view.Count(), testTags, measureCount)
+	if err := view.Register(vd); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)
 	}
-	defer view.Unregister(vd.View)
+	defer view.Unregister(vd)
 	// Wait for exporter to process metrics
 	<-time.After(10 * reportPeriod)
 
@@ -206,26 +191,21 @@ func TestCountData(t *testing.T) {
 	stats.Record(ctx, measureCount.M(1))
 	<-time.After(10 * time.Millisecond)
 
-	actual := exporter.collector.viewData["fooCount"].View
-	if actual != vd.View {
+	actual := exporter.statsExporter.viewData["fooCount"].View
+	if actual != vd {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
 }
 
 func TestSumData(t *testing.T) {
-	exporter := newExporter(Options{})
-
-	view.RegisterExporter(exporter)
 	reportPeriod := time.Millisecond
-	view.SetReportingPeriod(reportPeriod)
+	exporter := testExporter(Options{})
 
-	vd := &view.Data{
-		View: customNewView("fooSum", view.Sum(), testTags, measureSum),
-	}
-	if err := view.Register(vd.View); err != nil {
+	vd := newCustomView("fooSum", view.Sum(), testTags, measureSum)
+	if err := view.Register(vd); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)
 	}
-	defer view.Unregister(vd.View)
+	defer view.Unregister(vd)
 	// Wait for exporter to process metrics
 	<-time.After(10 * reportPeriod)
 
@@ -233,26 +213,21 @@ func TestSumData(t *testing.T) {
 	stats.Record(ctx, measureCount.M(1))
 	<-time.After(10 * time.Millisecond)
 
-	actual := exporter.collector.viewData["fooSum"].View
-	if actual != vd.View {
+	actual := exporter.statsExporter.viewData["fooSum"].View
+	if actual != vd {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
 }
 
 func TestLastValueData(t *testing.T) {
-	exporter := newExporter(Options{})
-
-	view.RegisterExporter(exporter)
 	reportPeriod := time.Millisecond
-	view.SetReportingPeriod(reportPeriod)
+	exporter := testExporter(Options{})
 
-	vd := &view.Data{
-		View: customNewView("fooLast", view.LastValue(), testTags, measureLast),
-	}
-	if err := view.Register(vd.View); err != nil {
+	vd := newCustomView("fooLast", view.LastValue(), testTags, measureLast)
+	if err := view.Register(vd); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)
 	}
-	defer view.Unregister(vd.View)
+	defer view.Unregister(vd)
 	// Wait for exporter to process metrics
 	<-time.After(10 * reportPeriod)
 
@@ -260,26 +235,21 @@ func TestLastValueData(t *testing.T) {
 	stats.Record(ctx, measureCount.M(1))
 	<-time.After(10 * time.Millisecond)
 
-	actual := exporter.collector.viewData["fooLast"].View
-	if actual != vd.View {
+	actual := exporter.statsExporter.viewData["fooLast"].View
+	if actual != vd {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
 }
 
 func TestHistogram(t *testing.T) {
-	exporter := newExporter(Options{})
-
-	view.RegisterExporter(exporter)
 	reportPeriod := time.Millisecond
-	view.SetReportingPeriod(reportPeriod)
+	exporter := testExporter(Options{})
 
-	vd := &view.Data{
-		View: customNewView("fooHisto", view.Distribution(), testTags, measureDist),
-	}
-	if err := view.Register(vd.View); err != nil {
+	vd := newCustomView("fooHisto", view.Distribution(), testTags, measureDist)
+	if err := view.Register(vd); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)
 	}
-	defer view.Unregister(vd.View)
+	defer view.Unregister(vd)
 	// Wait for exporter to process metrics
 	<-time.After(10 * reportPeriod)
 
@@ -287,8 +257,8 @@ func TestHistogram(t *testing.T) {
 	stats.Record(ctx, measureCount.M(1))
 	<-time.After(10 * time.Millisecond)
 
-	actual := exporter.collector.viewData["fooHisto"].View
-	if actual != vd.View {
+	actual := exporter.statsExporter.viewData["fooHisto"].View
+	if actual != vd {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
 }

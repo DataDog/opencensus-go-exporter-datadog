@@ -1,12 +1,11 @@
-# Datadog OpenCensus Metrics Exporter
-Owned by Team Agent-Integrations (Tiramisu)
+# OpenCensus Go Datadog Exporter
 
 ## Basic Usage
 
-By default, the datadog exporter will connect to the agent running at `127.0.0.1:8125`.
+By default, the Datadog exporter will connect to the agent running at `127.0.0.1:8125`.
 
 ```
-exporter, err := datadog.NewExporter(datadog.Options{})
+exporter := datadog.NewExporter(datadog.Options{})
 view.RegisterExporter(exporter)
 
 // define the measure
@@ -21,3 +20,6 @@ countView, _ := &view.View{
 }
 
 ```
+
+### Requirements:
+- Minimum version for `go`: `go1.10`

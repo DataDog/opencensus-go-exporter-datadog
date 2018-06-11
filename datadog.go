@@ -11,27 +11,17 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/DataDog/datadog-go/statsd"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 )
 
 const (
-	defaultHost   = "localhost"
-	defaultPort   = "8125"
-	opencensusTag = "source:Opencensus"
-)
-
-var (
-	exporter *Exporter
-	tags     = []string{opencensusTag}
-	reg      = regexp.MustCompile("[^a-zA-Z0-9]+")
+	defaultEndpoint = "localhost:8125"
 )
 
 // Exporter exports stats to Datadog.
 type Exporter struct {
-	opts      Options
-	collector *collector
+	statsExporter *statsExporter
 }
 
 // ExportView exports to Datadog if view data has one or more rows.
@@ -39,36 +29,16 @@ func (e *Exporter) ExportView(vd *view.Data) {
 	if len(vd.Rows) == 0 {
 		return
 	}
-	e.collector.addViewData(vd)
+	e.statsExporter.addViewData(vd)
 }
 
 // Options contains options for configuring the exporter.
 type Options struct {
-	// Namespace specifies the namespace to which metrics are appended.
-	Namespace string
+	Namespace string          // Namespace specifies the namespace to which metrics are appended.
+	StatsAddr string          // Endpoint for DogStatsD
+	OnError   func(err error) // OnError will be called in the case of an error while uploading the stats.
+	Tags      []string        // Tags specifies a set of global tags to attach to each metric.
 
-	// Host for DogStatsD connection
-	Host string
-
-	// Port for DogStatsD connection
-	Port string
-
-	// OnError will be called in the case of an error while uploading the stats.
-	// If not set, errors are simply logged.
-	OnError func(err error)
-
-	// Tags specifies a set of global tags to attach to each metric.
-	Tags []string
-}
-
-// getEndpoint determines the address for the statsD client
-func (o *Options) getEndpoint() string {
-	host, port := o.Host, o.Port
-	if host == "" || port == "" {
-		host, port = defaultHost, defaultPort
-	}
-	endpoint := host + ":" + port
-	return endpoint
 }
 
 func (o *Options) onError(err error) {
@@ -81,33 +51,13 @@ func (o *Options) onError(err error) {
 
 // NewExporter returns an exporter that exports stats to Datadog
 func NewExporter(o Options) *Exporter {
-	exporter = newExporter(o)
-	if exporter == nil {
-		log.Fatalf("Exporter not initialized")
+	return &Exporter{
+		statsExporter: newStatsExporter(o),
 	}
-	return exporter
 }
 
-func newExporter(o Options) *Exporter {
-	endpoint := o.getEndpoint()
-
-	client, err := statsd.New(endpoint)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	collector := &collector{
-		opts:     o,
-		viewData: make(map[string]*view.Data),
-		client:   client,
-	}
-
-	e := &Exporter{
-		opts:      o,
-		collector: collector,
-	}
-	return e
-}
+// regex pattern
+var reg = regexp.MustCompile("[^a-zA-Z0-9]+")
 
 // sanitizeString replaces all non-alphanumerical characters to underscore
 func sanitizeString(str string) string {
