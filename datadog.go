@@ -15,13 +15,10 @@ import (
 	"go.opencensus.io/tag"
 )
 
-const (
-	defaultEndpoint = "localhost:8125"
-)
-
 // Exporter exports stats to Datadog.
 type Exporter struct {
-	statsExporter *statsExporter
+	*statsExporter
+	*traceExporter
 }
 
 // ExportView exports to Datadog if view data has one or more rows.
@@ -34,11 +31,26 @@ func (e *Exporter) ExportView(vd *view.Data) {
 
 // Options contains options for configuring the exporter.
 type Options struct {
-	Namespace string          // Namespace specifies the namespace to which metrics are appended.
-	StatsAddr string          // Endpoint for DogStatsD
-	OnError   func(err error) // OnError will be called in the case of an error while uploading the stats.
-	Tags      []string        // Tags specifies a set of global tags to attach to each metric.
+	// Namespace specifies the namespaces to which metric keys are appended.
+	Namespace string
 
+	// Service specifies the service name used for tracing.
+	Service string
+
+	// TraceAddr specifies the host[:port] address of the Datadog Trace Agent.
+	// It defaults to localhost:8126.
+	TraceAddr string
+
+	// StatsAddr specifies the host[:port] address for DogStatsD. It defaults
+	// to localhost:8125.
+	StatsAddr string
+
+	// OnError specifies a function that will be called if an error occurs during
+	// processing stats or metrics.
+	OnError func(err error)
+
+	// Tags specifies a set of global tags to attach to each metric.
+	Tags []string
 }
 
 func (o *Options) onError(err error) {
@@ -53,6 +65,7 @@ func (o *Options) onError(err error) {
 func NewExporter(o Options) *Exporter {
 	return &Exporter{
 		statsExporter: newStatsExporter(o),
+		traceExporter: newTraceExporter(o),
 	}
 }
 
