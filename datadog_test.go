@@ -65,7 +65,7 @@ func TestExportView(t *testing.T) {
 	stats.Record(ctx, measureCount.M(1))
 	<-time.After(10 * time.Millisecond)
 
-	actual := exporter.statsExporter.viewData["fooCount"].View
+	actual := exporter.view("fooCount")
 	if actual != vd {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
@@ -184,7 +184,7 @@ func TestCountData(t *testing.T) {
 	stats.Record(ctx, measureCount.M(1))
 	<-time.After(10 * time.Millisecond)
 
-	actual := exporter.statsExporter.viewData["fooCount"].View
+	actual := exporter.view("fooCount")
 	if actual != vd {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
@@ -206,7 +206,7 @@ func TestSumData(t *testing.T) {
 	stats.Record(ctx, measureCount.M(1))
 	<-time.After(10 * time.Millisecond)
 
-	actual := exporter.statsExporter.viewData["fooSum"].View
+	actual := exporter.view("fooSum")
 	if actual != vd {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
@@ -228,7 +228,7 @@ func TestLastValueData(t *testing.T) {
 	stats.Record(ctx, measureCount.M(1))
 	<-time.After(10 * time.Millisecond)
 
-	actual := exporter.statsExporter.viewData["fooLast"].View
+	actual := exporter.view("fooLast")
 	if actual != vd {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
@@ -250,7 +250,7 @@ func TestHistogram(t *testing.T) {
 	stats.Record(ctx, measureCount.M(1))
 	<-time.After(10 * time.Millisecond)
 
-	actual := exporter.statsExporter.viewData["fooHisto"].View
+	actual := exporter.view("fooHisto")
 	if actual != vd {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
