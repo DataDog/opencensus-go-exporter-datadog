@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	// defaultTraceAgentAddr specifies the default address of the Datadog trace agent.
-	defaultTraceAgentAddr = "localhost:8126"
+	// defaultTraceAddr specifies the default address of the Datadog trace agent.
+	defaultTraceAddr = "localhost:8126"
 
 	// version specifies the version identifier that will be attached to the
 	// HTTP headers. In this case it is prefixed OC for Opencensus.
@@ -35,7 +35,7 @@ type transport struct {
 // addr is empty, it will use the default address, which is "localhost:8126".
 func newTransport(addr string) *transport {
 	if addr == "" {
-		addr = defaultTraceAgentAddr
+		addr = defaultTraceAddr
 	}
 	httpclient := &http.Client{
 		Transport: &http.Transport{

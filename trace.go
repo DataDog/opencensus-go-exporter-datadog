@@ -13,12 +13,6 @@ import (
 	"go.opencensus.io/trace"
 )
 
-type Options struct {
-	TraceAddr string
-	Service   string // not optional
-	OnError   func(error)
-}
-
 const (
 	// payloadLimit specifies the maximum payload size that the Datadog
 	// agent will accept. Request bodies larger than this will be rejected.
