@@ -17,8 +17,8 @@ import (
 // collector implements statsd.Client
 type statsExporter struct {
 	opts     Options
-	mu       sync.Mutex // mu guards viewData
 	client   *statsd.Client
+	mu       sync.Mutex // mu guards viewData
 	viewData map[string]*view.Data
 }
 

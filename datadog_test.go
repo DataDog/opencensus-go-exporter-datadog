@@ -53,13 +53,11 @@ func TestExportView(t *testing.T) {
 	reportPeriod := time.Millisecond
 	exporter := testExporter(Options{})
 
-	vd := &view.Data{
-		View: newCustomView("fooCount", view.Count(), testTags, measureCount),
-	}
-	if err := view.Register(vd.View); err != nil {
+	vd := newCustomView("fooCount", view.Count(), testTags, measureCount)
+	if err := view.Register(vd); err != nil {
 		t.Fatalf("Register error occurred: %v\n", err)
 	}
-	defer view.Unregister(vd.View)
+	defer view.Unregister(vd)
 	// Wait for exporter to process metrics
 	<-time.After(10 * reportPeriod)
 
@@ -68,7 +66,7 @@ func TestExportView(t *testing.T) {
 	<-time.After(10 * time.Millisecond)
 
 	actual := exporter.statsExporter.viewData["fooCount"].View
-	if actual != vd.View {
+	if actual != vd {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
 }
@@ -92,16 +90,12 @@ func TestSanitizeString(t *testing.T) {
 }
 
 func TestSanitizeMetricName(t *testing.T) {
-	vd1 := &view.Data{
-		View: newCustomView("fooGauge", view.Count(), testTags, measureCount),
-	}
-	vd2 := &view.Data{
-		View: newCustomView("bar-Sum", view.Sum(), testTags, measureSum),
-	}
+	vd1 := newCustomView("fooGauge", view.Count(), testTags, measureCount)
+	vd2 := newCustomView("bar-Sum", view.Sum(), testTags, measureSum)
 
 	testCases := []struct {
 		namespace string
-		view      *view.Data
+		view      *view.View
 		want      string
 	}{
 		{"opencensus", vd1, "opencensus.fooGauge"},
@@ -109,7 +103,7 @@ func TestSanitizeMetricName(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run("Testing sanitizeMetricName", func(t *testing.T) {
-			got := sanitizeMetricName(tc.namespace, tc.view.View)
+			got := sanitizeMetricName(tc.namespace, tc.view)
 			if got != tc.want {
 				t.Errorf("Expected: %v, Got: %v\n", tc.want, got)
 			}
@@ -121,11 +115,9 @@ func TestSignature(t *testing.T) {
 	key, _ := tag.NewKey("signature")
 	namespace := "opencensus"
 	tags := append(testTags, key)
-	vd := &view.Data{
-		View: newCustomView("fooGauge", view.Count(), tags, measureCount),
-	}
+	vd := newCustomView("fooGauge", view.Count(), tags, measureCount)
 
-	res := viewSignature(namespace, vd.View)
+	res := viewSignature(namespace, vd)
 	exp := "opencensus.fooGauge_signature"
 	if res != exp {
 		t.Errorf("Expected: %v, Got: %v\n", exp, res)
