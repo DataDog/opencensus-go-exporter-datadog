@@ -71,7 +71,7 @@ func TestErrorAmortizer(t *testing.T) {
 			for i := 0; i < 3; i++ {
 				ma.log(errorTypeEncoding, errors.New("encoding error"))
 			}
-			ma.log(errorTypeUnknown, errors.New("unknown error\n"))
+			ma.log(errorTypeUnknown, errors.New("unknown error"))
 			time.Sleep(waitTime + 10*time.Millisecond)
 			out := ma.lastError()
 			if out == nil {

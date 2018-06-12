@@ -88,17 +88,11 @@ func (e *errorAmortizer) report() {
 	}
 	var str strings.Builder
 	str.WriteString("Datadog Exporter error: ")
-	if n > 1 {
-		str.WriteString("\n")
-	}
 	for _, err := range e.errs {
 		if n > 1 {
-			str.WriteString("\t")
+			str.WriteString("\n\t")
 		}
 		str.WriteString(err.Error())
-		if n > 1 {
-			str.WriteString("\n")
-		}
 	}
 	e.callback(errors.New(str.String()))
 }
