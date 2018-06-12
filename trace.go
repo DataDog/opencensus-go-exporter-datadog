@@ -7,8 +7,6 @@ package datadog
 
 import (
 	"bytes"
-	"errors"
-	"log"
 	"sync"
 	"time"
 
@@ -51,9 +49,9 @@ var (
 var _ trace.Exporter = (*traceExporter)(nil)
 
 type traceExporter struct {
-	opts        Options
-	payload     *payload
-	handleError func(error)
+	opts    Options
+	payload *payload
+	errors  *errorAmortizer
 
 	// uploadFn specifies the function used for uploading.
 	// Defaults to (*transport).upload; replaced in tests.
@@ -68,19 +66,13 @@ func newTraceExporter(o Options) *traceExporter {
 	if o.Service == "" {
 		o.Service = defaultService
 	}
-	errorHandler := o.OnError
-	if errorHandler == nil {
-		errorHandler = func(err error) {
-			log.Printf("Datadog Tracer Error (%s): %v", version, err)
-		}
-	}
 	e := &traceExporter{
-		opts:        o,
-		payload:     newPayload(),
-		handleError: errorHandler,
-		uploadFn:    newTransport(o.TraceAddr).upload,
-		in:          make(chan *ddSpan, inChannelSize),
-		exit:        make(chan struct{}),
+		opts:     o,
+		payload:  newPayload(),
+		errors:   newErrorAmortizer(defaultErrorFreq, o.OnError),
+		uploadFn: newTransport(o.TraceAddr).upload,
+		in:       make(chan *ddSpan, inChannelSize),
+		exit:     make(chan struct{}),
 	}
 
 	go e.loop()
@@ -97,7 +89,7 @@ func (e *traceExporter) loop() {
 		select {
 		case span := <-e.in:
 			if err := e.payload.add(span); err != nil {
-				e.handleError(err)
+				e.errors.log(errorTypeEncoding, err)
 			}
 			if e.payload.size() > flushThreshold {
 				e.flush()
@@ -117,14 +109,7 @@ func (e *traceExporter) ExportSpan(s *trace.SpanData) {
 	select {
 	case e.in <- e.convertSpan(s):
 	default:
-		select {
-		case <-e.exit:
-			// loop stopped
-			e.handleError(errors.New("exporter is stopped"))
-		default:
-			// buffer full
-			e.handleError(errors.New("in channel is full, dropping span"))
-		}
+		e.errors.log(errorTypeOverflow, nil)
 	}
 }
 
@@ -137,7 +122,7 @@ func (e *traceExporter) flush() {
 	e.wg.Add(1)
 	go func() {
 		if err := e.uploadFn(buf, n); err != nil {
-			e.handleError(err)
+			e.errors.log(errorTypeTransport, err)
 		}
 		e.wg.Done()
 	}()
