@@ -14,11 +14,19 @@ import (
 	"go.opencensus.io/tag"
 )
 
-func testExporter(opts Options) *Exporter {
+type testStatsExporter struct{ *Exporter }
+
+func (e *testStatsExporter) view(name string) *view.View {
+	e.statsExporter.mu.Lock()
+	defer e.statsExporter.mu.Unlock()
+	return e.Exporter.statsExporter.viewData[name].View
+}
+
+func testExporter(opts Options) *testStatsExporter {
 	e := NewExporter(opts)
 	view.RegisterExporter(e)
 	view.SetReportingPeriod(time.Millisecond)
-	return e
+	return &testStatsExporter{e}
 }
 
 func TestAddViewData(t *testing.T) {

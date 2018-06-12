@@ -1,0 +1,24 @@
+version: 2
+jobs:
+     build:
+          working_directory: /go/src/github.com/DataDog/opencensus-go-exporter-datadog
+          docker:
+               - image: circleci/golang:1.10
+               - image: datadog/docker-dd-agent
+                 environment:
+                 - DD_APM_ENABLED=true
+                 - DD_BIND_HOST=0.0.0.0
+                 - DD_API_KEY=invalid_key_but_this_is_fine
+          steps:
+               - checkout
+               - run:
+                    name: Fetching dependencies
+                    command: |
+                         go get -t ./...
+                         go get golang.org/x/lint/golint
+               - run:
+                    name: Testing
+                    command: |
+                        go vet ./...
+                        golint $(go list ./... | grep -v /vendor/)
+                        INTEGRATION=1 go test -v -race ./...
