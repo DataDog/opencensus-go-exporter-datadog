@@ -212,3 +212,18 @@ func fillPayload(t *testing.T, p *payload) {
 		}
 	}
 }
+
+func BenchmarkThroughput(b *testing.B) {
+	p := newPayload()
+	b.SetBytes(int64(flushThreshold))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		p.reset()
+		for p.size() < flushThreshold {
+			if err := p.add(spanPairs["tags"].dd); err != nil {
+				b.Fatal(err)
+			}
+		}
+	}
+}

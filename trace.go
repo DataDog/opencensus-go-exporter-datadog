@@ -28,11 +28,10 @@ const (
 var (
 	// inChannelSize specifies the size of the buffered channel which
 	// takes spans and adds them to the payload.
-	inChannelSize = int(5e5) // 5K -> approx. 61MB memory
+	inChannelSize = int(5e5) // 500K (approx 61MB memory if full)
 
 	// flushThreshold specifies the payload's size threshold in bytes. If it
-	// is exceed, a flush will be triggered. It is half of the maximum
-	// payload size accepted by the Datadog agent.
+	// is exceeded, a flush will be triggered.
 	flushThreshold = payloadLimit / 2
 
 	// flushInterval specifies the interval at which the payload will
