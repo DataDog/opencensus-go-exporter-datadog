@@ -16,7 +16,7 @@ import (
 const (
 	// payloadLimit specifies the maximum payload size that the Datadog
 	// agent will accept. Request bodies larger than this will be rejected.
-	payloadLimit = int(1e7) // 10M
+	payloadLimit = int(1e7) // 10MB
 
 	// defaultService specifies the default service name that will be used
 	// with the registered traces. Users should normally specify a different
@@ -28,7 +28,7 @@ const (
 var (
 	// inChannelSize specifies the size of the buffered channel which
 	// takes spans and adds them to the payload.
-	inChannelSize = int(2e5) // 200K
+	inChannelSize = int(5e5) // 5K -> approx. 61MB memory
 
 	// flushThreshold specifies the payload's size threshold in bytes. If it
 	// is exceed, a flush will be triggered. It is half of the maximum
@@ -39,8 +39,6 @@ var (
 	// automatically be flushed.
 	flushInterval = 2 * time.Second
 )
-
-var _ trace.Exporter = (*traceExporter)(nil)
 
 type traceExporter struct {
 	opts    Options
@@ -98,8 +96,7 @@ func (e *traceExporter) loop() {
 	}
 }
 
-// ExportSpan implements trace.Exporter.
-func (e *traceExporter) ExportSpan(s *trace.SpanData) {
+func (e *traceExporter) exportSpan(s *trace.SpanData) {
 	select {
 	case e.in <- e.convertSpan(s):
 	default:

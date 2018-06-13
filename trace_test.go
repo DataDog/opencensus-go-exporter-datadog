@@ -61,7 +61,7 @@ func TestTraceExporter(t *testing.T) {
 		span := spanPairs["tags"].oc
 		count := 5 // 5 spans should take us overboard
 		for i := 0; i < count; i++ {
-			me.ExportSpan(span)
+			me.exportSpan(span)
 		}
 		time.Sleep(time.Millisecond) // wait for recv
 		me.wg.Wait()                 // wait for flush
@@ -73,7 +73,7 @@ func TestTraceExporter(t *testing.T) {
 
 	t.Run("stop", func(t *testing.T) {
 		me := newTestTraceExporter(t)
-		me.ExportSpan(spanPairs["root"].oc)
+		me.exportSpan(spanPairs["root"].oc)
 
 		time.Sleep(time.Millisecond) // wait for recv
 
@@ -100,6 +100,7 @@ func newTestTraceExporter(t *testing.T) *testTraceExporter {
 	return me
 }
 
+// payloads returns all payloads that were uploaded by this exporter.
 func (me *testTraceExporter) payloads() []ddPayload {
 	me.mu.RLock()
 	defer me.mu.RUnlock()

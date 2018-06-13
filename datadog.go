@@ -13,6 +13,12 @@ import (
 
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
+	"go.opencensus.io/trace"
+)
+
+var (
+	_ view.Exporter  = (*Exporter)(nil)
+	_ trace.Exporter = (*Exporter)(nil)
 )
 
 // Exporter exports stats to Datadog.
@@ -21,12 +27,17 @@ type Exporter struct {
 	*traceExporter
 }
 
-// ExportView exports to Datadog if view data has one or more rows.
+// ExportView implements view.Exporter.
 func (e *Exporter) ExportView(vd *view.Data) {
 	if len(vd.Rows) == 0 {
 		return
 	}
 	e.statsExporter.addViewData(vd)
+}
+
+// ExportSpan implements trace.Exporter.
+func (e *Exporter) ExportSpan(s *trace.SpanData) {
+	e.traceExporter.exportSpan(s)
 }
 
 // Options contains options for configuring the exporter.
