@@ -79,9 +79,10 @@ func newErrorAmortizer(interval time.Duration, cb func(error)) *errorAmortizer {
 	}
 }
 
-// report reports the error message to the user. Unsafe for concurrent use.
-// Guarded inside log().
-func (e *errorAmortizer) report() {
+// flush flushes any aggregated errors and resets the amortizer.
+func (e *errorAmortizer) flush() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	n := len(e.errs)
 	if n == 0 {
 		return
@@ -95,19 +96,8 @@ func (e *errorAmortizer) report() {
 		str.WriteString(err.Error())
 	}
 	e.callback(errors.New(str.String()))
-}
-
-// pause waits for the duration of interval before reporting to the user.
-// It is guarded inside log().
-func (e *errorAmortizer) pause() {
-	e.pausing = true
-	time.AfterFunc(e.interval, func() {
-		e.mu.Lock()
-		defer e.mu.Unlock()
-		e.report()
-		e.errs = make(map[errorType]*aggregateError)
-		e.pausing = false
-	})
+	e.errs = make(map[errorType]*aggregateError)
+	e.pausing = false
 }
 
 // limitReached returns true if the defaultErrorLimit has been reached
@@ -133,7 +123,8 @@ func (e *errorAmortizer) log(typ errorType, err error) {
 		e.errs[typ].num++
 	}
 	if !e.pausing {
-		e.pause()
+		e.pausing = true
+		time.AfterFunc(e.interval, e.flush)
 	}
 }
 

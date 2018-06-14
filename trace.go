@@ -85,11 +85,14 @@ func (e *traceExporter) loop() {
 			if e.payload.size() > flushThreshold {
 				e.flush()
 			}
+
 		case <-tick.C:
 			e.flush()
+
 		case <-e.exit:
 			e.flush()
 			e.wg.Wait() // wait for uploads to finish
+			e.errors.flush()
 			return
 		}
 	}
@@ -119,8 +122,10 @@ func (e *traceExporter) flush() {
 	e.payload.reset()
 }
 
-// Stop cleanly stops the exporter, flushing any remaining spans to the transport.
-// Only call Stop once per exporter. Repeated calls will cause panic.
+// Stop cleanly stops the exporter, flushing any remaining spans to the transport and
+// reporting any errors. Make sure to always call Stop at the end of your program in
+// order to not lose any tracing data. Only call Stop once per exporter. Repeated calls
+// will cause panic.
 func (e *traceExporter) Stop() {
 	e.exit <- struct{}{}
 	<-e.exit
