@@ -49,7 +49,7 @@ func TestTraceExporter(t *testing.T) {
 
 	t.Run("service", func(t *testing.T) {
 		me := newTraceExporter(Options{})
-		defer me.Stop()
+		defer me.stop()
 		if me.opts.Service == "" {
 			t.Fatal("service should never be empty")
 		}
@@ -57,7 +57,7 @@ func TestTraceExporter(t *testing.T) {
 
 	t.Run("threshold", func(t *testing.T) {
 		me := newTestTraceExporter(t)
-		defer me.Stop()
+		defer me.stop()
 		span := spanPairs["tags"].oc
 		count := 5 // 5 spans should take us overboard
 		for i := 0; i < count; i++ {
@@ -77,7 +77,7 @@ func TestTraceExporter(t *testing.T) {
 
 		time.Sleep(time.Millisecond) // wait for recv
 
-		me.Stop()
+		me.stop()
 		if len(me.payloads()) != 1 {
 			t.Fatalf("expected to flush 1, got %d", len(me.payloads()))
 		}

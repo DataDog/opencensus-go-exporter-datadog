@@ -122,11 +122,11 @@ func (e *traceExporter) flush() {
 	e.payload.reset()
 }
 
-// Stop cleanly stops the exporter, flushing any remaining spans to the transport and
+// stop cleanly stops the exporter, flushing any remaining spans to the transport and
 // reporting any errors. Make sure to always call Stop at the end of your program in
 // order to not lose any tracing data. Only call Stop once per exporter. Repeated calls
 // will cause panic.
-func (e *traceExporter) Stop() {
+func (e *traceExporter) stop() {
 	e.exit <- struct{}{}
 	<-e.exit
 }
