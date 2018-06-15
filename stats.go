@@ -14,6 +14,9 @@ import (
 	"go.opencensus.io/stats/view"
 )
 
+// defaultStatsAddr specifies the default address for the DogStatsD service.
+const defaultStatsAddr = "localhost:8125"
+
 // collector implements statsd.Client
 type statsExporter struct {
 	opts     Options
@@ -25,7 +28,7 @@ type statsExporter struct {
 func newStatsExporter(o Options) *statsExporter {
 	endpoint := o.StatsAddr
 	if endpoint == "" {
-		endpoint = defaultEndpoint
+		endpoint = defaultStatsAddr
 	}
 
 	client, err := statsd.New(endpoint)
