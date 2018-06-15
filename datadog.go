@@ -3,7 +3,6 @@
 // This product includes software developed at Datadog (https://www.datadoghq.com/).
 // Copyright 2018 Datadog, Inc.
 
-// Package datadog contains a Datadog exporter.
 package datadog
 
 import (
@@ -80,7 +79,9 @@ func (o *Options) onError(err error) {
 	}
 }
 
-// NewExporter returns an exporter that exports stats to Datadog
+// NewExporter returns an exporter that exports stats and traces to Datadog.
+// When using trace, it is important to call Stop at the end of your program
+// for a clean exit and to flush any remaining tracing data to the Datadog agent.
 func NewExporter(o Options) *Exporter {
 	return &Exporter{
 		statsExporter: newStatsExporter(o),

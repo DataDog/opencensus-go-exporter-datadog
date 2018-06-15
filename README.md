@@ -2,10 +2,14 @@
 
 ## Basic Usage
 
-By default, the Datadog exporter will connect to the agent running at `127.0.0.1:8125`.
+A basic usage example can be seen below. Visit the [godoc page](https://godoc.org/github.com/DataDog/opencensus-go-exporter-datadog) for a more in depth look at the
+available options.
 
-```
-exporter := datadog.NewExporter(datadog.Options{})
+```go
+opts := datadog.Options{Service: "my-app"}
+exporter := datadog.NewExporter(opts)
+defer exporter.Stop()
+
 view.RegisterExporter(exporter)
 
 // define the measure
@@ -22,4 +26,6 @@ countView, _ := &view.View{
 ```
 
 ### Requirements:
-- Minimum version for `go`: `go1.10`
+
+- Go 1.10
+- Datadog Agent 6
