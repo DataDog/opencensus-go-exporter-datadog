@@ -27,6 +27,7 @@ func main() {
 	ctx := context.Background()
 
 	exporter := datadog.NewExporter(datadog.Options{})
+	defer exporter.Stop()
 
 	view.RegisterExporter(exporter)
 
