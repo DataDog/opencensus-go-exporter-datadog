@@ -119,12 +119,12 @@ func viewSignature(namespace string, v *view.View) string {
 
 // tagMetrics concatenates user input custom tags with row tags
 func (o *Options) tagMetrics(rowTags []tag.Tag, addlTags []string) []string {
-	customTags := o.Tags
-	var finaltag []string
+	finalTags := make([]string, len(o.Tags), len(o.Tags)+len(rowTags)+len(addlTags))
+	copy(finalTags, o.Tags)
 	for key := range rowTags {
-		finaltag = append(customTags,
+		finalTags = append(finalTags,
 			rowTags[key].Key.Name()+":"+rowTags[key].Value)
 	}
-	finaltag = append(finaltag, addlTags...)
-	return finaltag
+	finalTags = append(finalTags, addlTags...)
+	return finalTags
 }

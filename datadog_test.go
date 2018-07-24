@@ -127,10 +127,12 @@ func TestSignature(t *testing.T) {
 func TestTagMetrics(t *testing.T) {
 	o := Options{}
 	key, _ := tag.NewKey("testTags")
-	tags := []tag.Tag{tag.Tag{Key: key, Value: "Metrics"}}
+	key2, _ := tag.NewKey("testTags2")
+
+	tags := []tag.Tag{tag.Tag{Key: key, Value: "Metrics"}, tag.Tag{Key: key2, Value: "Metrics"}}
 	customTag := []string{"program_name:main"}
 	result := o.tagMetrics(tags, customTag)
-	expected := []string{"testTags:Metrics", "program_name:main"}
+	expected := []string{"testTags:Metrics", "testTags2:Metrics", "program_name:main"}
 
 	if n := len(expected); n == 0 {
 		t.Fatal("got 0")
@@ -185,7 +187,7 @@ func TestCountData(t *testing.T) {
 	<-time.After(10 * time.Millisecond)
 
 	actual := exporter.view("fooCount")
-	if actual != vd {
+	if !reflect.DeepEqual(*actual, *vd) {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
 }
