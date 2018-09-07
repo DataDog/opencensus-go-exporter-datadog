@@ -182,6 +182,34 @@ func TestConvertSpan(t *testing.T) {
 	}
 }
 
+func TestConvertSpanWithRootResourceName(t *testing.T) {
+	service := "my-service"
+	resource := "my-resource"
+	e := newTraceExporter(Options{Service: service, RootResourceName: resource})
+
+	{
+		name := "root"
+		tt := spanPairs[name]
+		t.Run(name, func(t *testing.T) {
+			want := *tt.dd
+			want.Resource = resource
+			if got := e.convertSpan(tt.oc); !reflect.DeepEqual(got, &want) {
+				t.Fatalf("\nGot:\n%#v\n\nWant:\n%#v\n", got, &want)
+			}
+		})
+	}
+
+	{
+		name := "child"
+		tt := spanPairs[name]
+		t.Run(name, func(t *testing.T) {
+			if got := e.convertSpan(tt.oc); !reflect.DeepEqual(got, tt.dd) {
+				t.Fatalf("\nGot:\n%#v\n\nWant:\n%#v\n", got, tt.dd)
+			}
+		})
+	}
+}
+
 func TestSetError(t *testing.T) {
 	for i, tt := range [...]struct {
 		val interface{} // error value
