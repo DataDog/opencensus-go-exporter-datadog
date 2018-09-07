@@ -59,6 +59,8 @@ func (e *traceExporter) convertSpan(s *trace.SpanData) *ddSpan {
 	}
 	if s.ParentSpanID != (trace.SpanID{}) {
 		span.ParentID = binary.BigEndian.Uint64(s.ParentSpanID[:])
+	} else if e.opts.RootResourceName != "" {
+		span.Resource = e.opts.RootResourceName
 	}
 	switch s.SpanKind {
 	case trace.SpanKindClient:

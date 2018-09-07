@@ -55,6 +55,9 @@ type Options struct {
 	// Service specifies the service name used for tracing.
 	Service string
 
+	// RootResourceName specifies the resource name of the top level span
+	RootResourceName string
+
 	// TraceAddr specifies the host[:port] address of the Datadog Trace Agent.
 	// It defaults to localhost:8126.
 	TraceAddr string
