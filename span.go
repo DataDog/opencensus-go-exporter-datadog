@@ -75,6 +75,9 @@ func (e *traceExporter) convertSpan(s *trace.SpanData) *ddSpan {
 	if msg := s.Status.Message; msg != "" {
 		span.Meta[statusKey] = msg
 	}
+	for key, val := range e.opts.GlobalTags {
+		setTag(span, key, val)
+	}
 	for key, val := range s.Attributes {
 		setTag(span, key, val)
 	}
