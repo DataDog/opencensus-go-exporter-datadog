@@ -69,6 +69,10 @@ type Options struct {
 
 	// Tags specifies a set of global tags to attach to each metric.
 	Tags []string
+
+	// GlobalTags holds a set of tags that will automatically be applied to all
+	// exported spans.
+	GlobalTags map[string]interface{}
 }
 
 func (o *Options) onError(err error) {

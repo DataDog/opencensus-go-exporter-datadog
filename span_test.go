@@ -173,12 +173,27 @@ var spanPairs = map[string]struct {
 func TestConvertSpan(t *testing.T) {
 	service := "my-service"
 	e := newTraceExporter(Options{Service: service})
+	defer e.stop()
+
 	for name, tt := range spanPairs {
 		t.Run(name, func(t *testing.T) {
 			if got := e.convertSpan(tt.oc); !reflect.DeepEqual(got, tt.dd) {
 				t.Fatalf("\nGot:\n%#v\n\nWant:\n%#v\n", got, tt.dd)
 			}
 		})
+	}
+}
+
+func TestGlobalTags(t *testing.T) {
+	e := newTraceExporter(Options{
+		Service:    "my-service",
+		GlobalTags: map[string]interface{}{"key1": "value1"},
+	})
+	defer e.stop()
+
+	got := e.convertSpan(spanPairs["tags"].oc)
+	if got.Meta["key1"] != "value1" {
+		t.Fatal("global tag not set")
 	}
 }
 
