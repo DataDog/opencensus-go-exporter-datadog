@@ -49,8 +49,14 @@ func (s *statsExporter) addViewData(vd *view.Data) {
 	s.viewData[sig] = vd
 	s.mu.Unlock()
 
+	var err error
 	for _, row := range vd.Rows {
-		s.submitMetric(vd.View, row, sig)
+		if e := s.submitMetric(vd.View, row, sig); e != nil {
+			err = e
+		}
+	}
+	if err != nil {
+		s.opts.onError(err) // Only report last error.
 	}
 }
 
