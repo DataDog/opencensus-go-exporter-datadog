@@ -87,6 +87,7 @@ func (e *traceExporter) convertSpan(s *trace.SpanData) *ddSpan {
 const (
 	samplingPriorityKey  = "_sampling_priority_v1"
 	statusDescriptionKey = "opencensus.status_description"
+	spanNameKey          = "span.name"
 )
 
 func setTag(s *ddSpan, key string, val interface{}) {
@@ -125,6 +126,8 @@ func setStringTag(s *ddSpan, key, v string) {
 		s.Resource = v
 	case ext.SpanType:
 		s.Type = v
+	case spanNameKey:
+		s.Name = v
 	default:
 		s.Meta[key] = v
 	}
