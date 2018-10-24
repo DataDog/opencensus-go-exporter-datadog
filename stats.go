@@ -14,8 +14,16 @@ import (
 	"go.opencensus.io/stats/view"
 )
 
-// DefaultStatsAddrUDP specifies the default protocol (UDP) and address for the DogStatsD service.
-const DefaultStatsAddrUDP = "localhost:8125"
+const (
+	// DefaultStatsAddrUDP specifies the default protocol (UDP) and address
+	// for the DogStatsD service.
+	DefaultStatsAddrUDP = "localhost:8125"
+
+	// DefaultStatsAddrUDS specifies the default socket address for the
+	// DogStatsD service over UDS. Only useful for platforms supporting unix
+	// sockets.
+	DefaultStatsAddrUDS = "unix:///var/run/datadog/dsd.socket"
+)
 
 // collector implements statsd.Client
 type statsExporter struct {
