@@ -86,11 +86,16 @@ func (o *Options) onError(err error) {
 // NewExporter returns an exporter that exports stats and traces to Datadog.
 // When using trace, it is important to call Stop at the end of your program
 // for a clean exit and to flush any remaining tracing data to the Datadog agent.
-func NewExporter(o Options) *Exporter {
-	return &Exporter{
-		statsExporter: newStatsExporter(o),
-		traceExporter: newTraceExporter(o),
+func NewExporter(o Options) (exporter *Exporter, err error) {
+	statsExporter, err := newStatsExporter(o)
+	if err != nil {
+		return
 	}
+
+	return &Exporter{
+		statsExporter: statsExporter,
+		traceExporter: newTraceExporter(o),
+	}, nil
 }
 
 // regex pattern

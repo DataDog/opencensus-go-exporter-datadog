@@ -7,7 +7,6 @@ package datadog
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/DataDog/datadog-go/statsd"
@@ -33,7 +32,7 @@ type statsExporter struct {
 	viewData map[string]*view.Data
 }
 
-func newStatsExporter(o Options) *statsExporter {
+func newStatsExporter(o Options) (*statsExporter, error) {
 	endpoint := o.StatsAddr
 	if endpoint == "" {
 		endpoint = DefaultStatsAddrUDP
@@ -41,14 +40,14 @@ func newStatsExporter(o Options) *statsExporter {
 
 	client, err := statsd.New(endpoint)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	return &statsExporter{
 		opts:     o,
 		viewData: make(map[string]*view.Data),
 		client:   client,
-	}
+	}, nil
 }
 
 func (s *statsExporter) addViewData(vd *view.Data) {
