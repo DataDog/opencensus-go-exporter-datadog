@@ -41,6 +41,32 @@ func TestAddViewData(t *testing.T) {
 	}
 }
 
+func TestUDSExportError(t *testing.T) {
+	var expected error
+
+	exporter := testExporter(Options{
+		StatsAddr: "unix:///invalid.socket", // Ideally we wwouln't hit the filesystem.
+		OnError: func(err error) {
+			expected = err
+		},
+	})
+
+	data := &view.Data{
+		View: newView(view.Count()),
+		Rows: []*view.Row{
+			{
+				Tags: []tag.Tag{},
+				Data: &view.CountData{},
+			},
+		},
+	}
+	exporter.statsExporter.addViewData(data)
+
+	if expected == nil {
+		t.Errorf("Expected an error")
+	}
+}
+
 func TestNilAggregation(t *testing.T) {
 	exporter := testExporter(Options{})
 	noneAgg := &view.Aggregation{
