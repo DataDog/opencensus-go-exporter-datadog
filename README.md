@@ -12,3 +12,7 @@ provides some simple usage examples.
 
 [godoc-image]: https://godoc.org/github.com/DataDog/opencensus-go-exporter-datadog?status.svg
 [godoc-url]: https://godoc.org/github.com/DataDog/opencensus-go-exporter-datadog
+
+### Disclaimer
+
+For trace, this package is considered experiemental and comes with limitations. More specifically, due to the differences in operation between Datadog and OpenCensus, statistics (such as percentiles) seen in the Datadog application will be inaccurate and will be limited to only sampled traces. It is not advised to rely on these numbers to assert accurate system behaviour.  We are aware of the issue and the situation could change in the near future.
