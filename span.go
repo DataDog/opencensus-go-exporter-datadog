@@ -85,9 +85,10 @@ func (e *traceExporter) convertSpan(s *trace.SpanData) *ddSpan {
 }
 
 const (
-	samplingPriorityKey  = "_sampling_priority_v1"
-	statusDescriptionKey = "opencensus.status_description"
-	spanNameKey          = "span.name"
+	samplingPriorityKey     = "_sampling_priority_v1"
+	statusDescriptionKey    = "opencensus.status_description"
+	spanNameKey             = "span.name"
+	samplingPriorityRateKey = "_sampling_priority_rate_v1"
 )
 
 func setTag(s *ddSpan, key string, val interface{}) {
