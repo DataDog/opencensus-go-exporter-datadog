@@ -7,13 +7,17 @@ package main
 
 import (
 	"context"
+	"log"
 
 	datadog "github.com/DataDog/opencensus-go-exporter-datadog"
 	"go.opencensus.io/trace"
 )
 
 func main() {
-	exporter := datadog.NewExporter(datadog.Options{Service: "my-app"})
+	exporter, err := datadog.NewExporter(datadog.Options{Service: "my-app"})
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer exporter.Stop()
 
 	trace.RegisterExporter(exporter)

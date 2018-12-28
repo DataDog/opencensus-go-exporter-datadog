@@ -51,7 +51,10 @@ func newCustomView(measureName string, agg *view.Aggregation, tags []tag.Key, me
 
 func TestExportView(t *testing.T) {
 	reportPeriod := time.Millisecond
-	exporter := testExporter(Options{})
+	exporter, err := testExporter(Options{})
+	if err != nil {
+		t.Error(err)
+	}
 
 	vd := newCustomView("fooCount", view.Count(), testTags, measureCount)
 	if err := view.Register(vd); err != nil {
@@ -172,7 +175,10 @@ func TestOnErrorNil(t *testing.T) {
 
 func TestCountData(t *testing.T) {
 	reportPeriod := time.Millisecond
-	exporter := testExporter(Options{})
+	exporter, err := testExporter(Options{})
+	if err != nil {
+		t.Error(err)
+	}
 
 	vd := newCustomView("fooCount", view.Count(), testTags, measureCount)
 	if err := view.Register(vd); err != nil {
@@ -194,7 +200,10 @@ func TestCountData(t *testing.T) {
 
 func TestSumData(t *testing.T) {
 	reportPeriod := time.Millisecond
-	exporter := testExporter(Options{})
+	exporter, err := testExporter(Options{})
+	if err != nil {
+		t.Error(err)
+	}
 
 	vd := newCustomView("fooSum", view.Sum(), testTags, measureSum)
 	if err := view.Register(vd); err != nil {
@@ -216,7 +225,10 @@ func TestSumData(t *testing.T) {
 
 func TestLastValueData(t *testing.T) {
 	reportPeriod := time.Millisecond
-	exporter := testExporter(Options{})
+	exporter, err := testExporter(Options{})
+	if err != nil {
+		t.Error(err)
+	}
 
 	vd := newCustomView("fooLast", view.LastValue(), testTags, measureLast)
 	if err := view.Register(vd); err != nil {
@@ -238,7 +250,10 @@ func TestLastValueData(t *testing.T) {
 
 func TestHistogram(t *testing.T) {
 	reportPeriod := time.Millisecond
-	exporter := testExporter(Options{})
+	exporter, err := testExporter(Options{})
+	if err != nil {
+		t.Error(err)
+	}
 
 	vd := newCustomView("fooHisto", view.Distribution(), testTags, measureDist)
 	if err := view.Register(vd); err != nil {
