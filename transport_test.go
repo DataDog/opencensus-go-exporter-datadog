@@ -53,6 +53,6 @@ func testSpan(traceID uint64, name, service string) *ddSpan {
 		Service:  service,
 		Start:    start,
 		Duration: duration,
-		Metrics:  map[string]float64{samplingPriorityKey: ext.PriorityAutoKeep},
+		Metrics:  map[string]float64{keySamplingPriority: ext.PriorityAutoKeep},
 	}
 }

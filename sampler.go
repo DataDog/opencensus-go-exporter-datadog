@@ -61,8 +61,7 @@ func (ps *prioritySampler) readRatesJSON(rc io.ReadCloser) error {
 	return nil
 }
 
-// getRate returns the sampling rate to be used for the given span. Callers must
-// guard the span.
+// getRate returns the sampling rate to be used for the given span.
 func (ps *prioritySampler) getRate(spn *ddSpan) float64 {
 	key := "service:" + spn.Service + ",env:" + spn.Meta[ext.Environment]
 	ps.mu.RLock()
@@ -73,14 +72,13 @@ func (ps *prioritySampler) getRate(spn *ddSpan) float64 {
 	return ps.defaultRate
 }
 
-// apply applies sampling priority to the given span. Caller must ensure it is safe
-// to modify the span.
+// applyPriority applies sampling priority to the given ddSpan.
 func (ps *prioritySampler) applyPriority(spn *ddSpan) {
 	rate := ps.getRate(spn)
 	if sampledByRate(spn.TraceID, rate) {
-		spn.Metrics[samplingPriorityKey] = ext.PriorityAutoKeep
+		spn.Metrics[keySamplingPriority] = ext.PriorityAutoKeep
 	} else {
-		spn.Metrics[samplingPriorityKey] = ext.PriorityAutoReject
+		spn.Metrics[keySamplingPriority] = ext.PriorityAutoReject
 	}
-	spn.Metrics[samplingPriorityRateKey] = rate
+	spn.Metrics[keySamplingPriorityRate] = rate
 }

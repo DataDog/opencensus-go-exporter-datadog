@@ -58,7 +58,7 @@ var spanPairs = map[string]struct {
 			Meta: map[string]string{
 				"bool":               "true",
 				"str":                "abc",
-				statusDescriptionKey: "status-msg",
+				keyStatusDescription: "status-msg",
 			},
 		},
 	},
@@ -154,7 +154,7 @@ var spanPairs = map[string]struct {
 			Start:    testStartTime.UnixNano(),
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
 			Metrics: map[string]float64{
-				samplingPriorityKey: ext.PriorityUserReject,
+				keySamplingPriority: ext.PriorityUserReject,
 			},
 			Service: "other-service",
 			Error:   1,
@@ -273,7 +273,7 @@ func TestSetTag(t *testing.T) {
 		setTag(span, "key", int64(12))
 		eq(span.Metrics["key"], float64(12))
 		setTag(span, ext.SamplingPriority, int64(1))
-		eq(span.Metrics[samplingPriorityKey], float64(1))
+		eq(span.Metrics[keySamplingPriority], float64(1))
 	})
 
 	t.Run("default", func(t *testing.T) {

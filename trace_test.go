@@ -107,11 +107,11 @@ func TestTraceExporter(t *testing.T) {
 
 		// span has sampling priority and rate applied
 		span1 := payload[0][0][0]
-		p, ok := span1.Metrics[samplingPriorityKey]
+		p, ok := span1.Metrics[keySamplingPriority]
 		if !ok || !(p == ext.PriorityAutoKeep || p == ext.PriorityAutoReject) {
 			t.Fatal(p, ok)
 		}
-		if v := span1.Metrics[samplingPriorityRateKey]; v != 1 {
+		if v := span1.Metrics[keySamplingPriorityRate]; v != 1 {
 			t.Fatalf("got %f", v)
 		}
 	})

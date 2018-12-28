@@ -66,7 +66,7 @@ func (e *traceExporter) convertSpan(s *trace.SpanData) *ddSpan {
 	case trace.SpanKindServer:
 		span.Type = "server"
 	}
-	statusKey := statusDescriptionKey
+	statusKey := keyStatusDescription
 	if code := s.Status.Code; code != 0 {
 		statusKey = ext.ErrorMsg
 		span.Error = 1
@@ -85,10 +85,10 @@ func (e *traceExporter) convertSpan(s *trace.SpanData) *ddSpan {
 }
 
 const (
-	samplingPriorityKey     = "_sampling_priority_v1"
-	statusDescriptionKey    = "opencensus.status_description"
-	spanNameKey             = "span.name"
-	samplingPriorityRateKey = "_sampling_priority_rate_v1"
+	keySamplingPriority     = "_sampling_priority_v1"
+	keyStatusDescription    = "opencensus.status_description"
+	keySpanName             = "span.name"
+	keySamplingPriorityRate = "_sampling_priority_rate_v1"
 )
 
 func setTag(s *ddSpan, key string, val interface{}) {
@@ -108,7 +108,7 @@ func setTag(s *ddSpan, key string, val interface{}) {
 		}
 	case int64:
 		if key == ext.SamplingPriority {
-			s.Metrics[samplingPriorityKey] = float64(v)
+			s.Metrics[keySamplingPriority] = float64(v)
 		} else {
 			s.Metrics[key] = float64(v)
 		}
@@ -127,7 +127,7 @@ func setStringTag(s *ddSpan, key, v string) {
 		s.Resource = v
 	case ext.SpanType:
 		s.Type = v
-	case spanNameKey:
+	case keySpanName:
 		s.Name = v
 	default:
 		s.Meta[key] = v

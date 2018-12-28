@@ -83,7 +83,7 @@ func (e *traceExporter) loop() {
 	for {
 		select {
 		case span := <-e.in:
-			if _, ok := span.Metrics[samplingPriorityKey]; !ok {
+			if _, ok := span.Metrics[keySamplingPriority]; !ok {
 				e.sampler.applyPriority(span)
 			}
 			if err := e.payload.add(span); err != nil {
