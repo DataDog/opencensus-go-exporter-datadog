@@ -53,11 +53,8 @@ var spanPairs = map[string]struct {
 			Resource: "/a/b",
 			Start:    testStartTime.UnixNano(),
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
-			Metrics: map[string]float64{
-				"int64":             1,
-				samplingPriorityKey: ext.PriorityAutoKeep,
-			},
-			Service: "my-service",
+			Metrics:  map[string]float64{"int64": 1},
+			Service:  "my-service",
 			Meta: map[string]string{
 				"bool":               "true",
 				"str":                "abc",
@@ -89,11 +86,9 @@ var spanPairs = map[string]struct {
 			Resource: "/a/b",
 			Start:    testStartTime.UnixNano(),
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
-			Metrics: map[string]float64{
-				samplingPriorityKey: ext.PriorityAutoKeep,
-			},
-			Service: "my-service",
-			Meta:    map[string]string{},
+			Metrics:  map[string]float64{},
+			Service:  "my-service",
+			Meta:     map[string]string{},
 		},
 	},
 	"error": {
@@ -121,11 +116,9 @@ var spanPairs = map[string]struct {
 			Resource: "/a/b",
 			Start:    testStartTime.UnixNano(),
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
-			Metrics: map[string]float64{
-				samplingPriorityKey: ext.PriorityAutoKeep,
-			},
-			Error:   1,
-			Service: "my-service",
+			Metrics:  map[string]float64{},
+			Error:    1,
+			Service:  "my-service",
 			Meta: map[string]string{
 				ext.ErrorMsg:  "status-msg",
 				ext.ErrorType: "cancelled",

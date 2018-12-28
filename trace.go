@@ -7,6 +7,7 @@ package datadog
 
 import (
 	"bytes"
+	"io"
 	"sync"
 	"time"
 
@@ -43,10 +44,11 @@ type traceExporter struct {
 	opts    Options
 	payload *payload
 	errors  *errorAmortizer
+	sampler *prioritySampler
 
 	// uploadFn specifies the function used for uploading.
 	// Defaults to (*transport).upload; replaced in tests.
-	uploadFn func(pkg *bytes.Buffer, count int) error
+	uploadFn func(pkg *bytes.Buffer, count int) (io.ReadCloser, error)
 
 	wg   sync.WaitGroup // counts active uploads
 	in   chan *ddSpan
@@ -57,10 +59,12 @@ func newTraceExporter(o Options) *traceExporter {
 	if o.Service == "" {
 		o.Service = defaultService
 	}
+	sampler := newPrioritySampler()
 	e := &traceExporter{
 		opts:     o,
 		payload:  newPayload(),
 		errors:   newErrorAmortizer(defaultErrorFreq, o.OnError),
+		sampler:  sampler,
 		uploadFn: newTransport(o.TraceAddr).upload,
 		in:       make(chan *ddSpan, inChannelSize),
 		exit:     make(chan struct{}),
@@ -79,6 +83,9 @@ func (e *traceExporter) loop() {
 	for {
 		select {
 		case span := <-e.in:
+			if _, ok := span.Metrics[samplingPriorityKey]; !ok {
+				e.sampler.applyPriority(span)
+			}
 			if err := e.payload.add(span); err != nil {
 				e.errors.log(errorTypeEncoding, err)
 			}
@@ -114,8 +121,11 @@ func (e *traceExporter) flush() {
 	buf := e.payload.buffer()
 	e.wg.Add(1)
 	go func() {
-		if err := e.uploadFn(buf, n); err != nil {
+		body, err := e.uploadFn(buf, n)
+		if err != nil {
 			e.errors.log(errorTypeTransport, err)
+		} else {
+			e.sampler.readRatesJSON(body) // do we care about errors?
 		}
 		e.wg.Done()
 	}()

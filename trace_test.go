@@ -7,12 +7,16 @@ package datadog
 
 import (
 	"bytes"
+	"io"
+	"io/ioutil"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/tinylib/msgp/msgp"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 )
 
 const (
@@ -82,6 +86,35 @@ func TestTraceExporter(t *testing.T) {
 			t.Fatalf("expected to flush 1, got %d", len(me.payloads()))
 		}
 	})
+
+	t.Run("sampler", func(t *testing.T) {
+		eq := equalFunc(t)
+		me := newTestTraceExporter(t)
+		me.exportSpan(spanPairs["error"].oc)
+
+		time.Sleep(time.Millisecond) // wait for recv
+		me.stop()
+
+		// sampler is updated after flush
+		eq(me.sampler.rates["service:db.users,env:"], 0.9)
+		eq(me.sampler.defaultRate, 0.8)
+
+		// got the sent span
+		payload := me.payloads()
+		eq(len(payload), 1)
+		eq(len(payload[0]), 1)
+		eq(len(payload[0][0]), 1)
+
+		// span has sampling priority and rate applied
+		span1 := payload[0][0][0]
+		p, ok := span1.Metrics[samplingPriorityKey]
+		if !ok || !(p == ext.PriorityAutoKeep || p == ext.PriorityAutoReject) {
+			t.Fatal(p, ok)
+		}
+		if v := span1.Metrics[samplingPriorityRateKey]; v != 1 {
+			t.Fatalf("got %f", v)
+		}
+	})
 }
 
 // testTraceExporter wraps a traceExporter, recording all flushed payloads.
@@ -107,7 +140,7 @@ func (me *testTraceExporter) payloads() []ddPayload {
 	return me.flushed
 }
 
-func (me *testTraceExporter) uploadFn(buf *bytes.Buffer, _ int) error {
+func (me *testTraceExporter) uploadFn(buf *bytes.Buffer, _ int) (io.ReadCloser, error) {
 	var ddp ddPayload
 	if err := msgp.Decode(buf, &ddp); err != nil {
 		me.t.Fatal(err)
@@ -115,5 +148,5 @@ func (me *testTraceExporter) uploadFn(buf *bytes.Buffer, _ int) error {
 	me.mu.Lock()
 	me.flushed = append(me.flushed, ddp)
 	me.mu.Unlock()
-	return nil
+	return ioutil.NopCloser(strings.NewReader(`{"rate_by_service":{"service:,env:":0.8,"service:db.users,env:":0.9}}`)), nil
 }

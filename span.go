@@ -54,7 +54,7 @@ func (e *traceExporter) convertSpan(s *trace.SpanData) *ddSpan {
 		Service:  e.opts.Service,
 		Start:    startNano,
 		Duration: s.EndTime.UnixNano() - startNano,
-		Metrics:  map[string]float64{samplingPriorityKey: ext.PriorityAutoKeep},
+		Metrics:  map[string]float64{},
 		Meta:     map[string]string{},
 	}
 	if s.ParentSpanID != (trace.SpanID{}) {

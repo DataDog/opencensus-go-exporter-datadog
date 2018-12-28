@@ -75,7 +75,7 @@ func (ps *prioritySampler) getRate(spn *ddSpan) float64 {
 
 // apply applies sampling priority to the given span. Caller must ensure it is safe
 // to modify the span.
-func (ps *prioritySampler) apply(spn *ddSpan) {
+func (ps *prioritySampler) applyPriority(spn *ddSpan) {
 	rate := ps.getRate(spn)
 	if sampledByRate(spn.TraceID, rate) {
 		spn.Metrics[samplingPriorityKey] = ext.PriorityAutoKeep

@@ -29,7 +29,11 @@ func TestTransport(t *testing.T) {
 		p.add(span)
 	}
 	trans := newTransport("")
-	err := trans.upload(p.buffer(), len(p.traces))
+	body, err := trans.upload(p.buffer(), len(p.traces))
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = newPrioritySampler().readRatesJSON(body)
 	if err != nil {
 		t.Fatal(err)
 	}

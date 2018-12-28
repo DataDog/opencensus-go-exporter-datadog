@@ -150,12 +150,12 @@ func TestPrioritySampler(t *testing.T) {
 		testSpan1.Service = "obfuscate.http"
 		testSpan1.TraceID = math.MaxUint64 - (math.MaxUint64 / 4)
 
-		ps.apply(testSpan1)
+		ps.applyPriority(testSpan1)
 		assert.EqualValues(ext.PriorityAutoKeep, testSpan1.Metrics[samplingPriorityKey])
 		assert.EqualValues(0.5, testSpan1.Metrics[samplingPriorityRateKey])
 
 		testSpan1.TraceID = math.MaxUint64 - (math.MaxUint64 / 3)
-		ps.apply(testSpan1)
+		ps.applyPriority(testSpan1)
 		assert.EqualValues(ext.PriorityAutoReject, testSpan1.Metrics[samplingPriorityKey])
 		assert.EqualValues(0.5, testSpan1.Metrics[samplingPriorityRateKey])
 
