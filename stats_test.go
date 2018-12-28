@@ -37,7 +37,6 @@ func TestAddViewData(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
 	expected := &view.Data{
 		View: newView(view.Count()),
 	}
@@ -52,7 +51,6 @@ func TestUDPExportError(t *testing.T) {
 	_, err := testExporter(Options{
 		StatsAddr: "invalid_address",
 	})
-
 	if err == nil {
 		t.Errorf("Expected an error")
 	}
@@ -92,7 +90,6 @@ func TestNilAggregation(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
 	noneAgg := &view.Aggregation{
 		Type:    view.AggTypeNone,
 		Buckets: []float64{1},

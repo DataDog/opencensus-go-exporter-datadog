@@ -24,9 +24,10 @@ var (
 )
 
 func main() {
-	ctx := context.Background()
-
-	exporter := datadog.NewExporter(datadog.Options{})
+	exporter, err := datadog.NewExporter(datadog.Options{})
+	if err != nil {
+		log.Fatal(err)
+	}
 	defer exporter.Stop()
 
 	view.RegisterExporter(exporter)
@@ -54,7 +55,7 @@ func main() {
 	// Record some measures...
 	for {
 		log.Printf("recording...\n")
-		stats.Record(ctx, videoCount.M(1), videoSize.M(rand.Int63()))
+		stats.Record(context.Background(), videoCount.M(1), videoSize.M(rand.Int63()))
 		<-time.After(time.Millisecond * time.Duration(1+rand.Intn(400)))
 	}
 
