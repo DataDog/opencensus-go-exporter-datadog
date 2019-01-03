@@ -78,10 +78,8 @@ func TestTraceExporter(t *testing.T) {
 	t.Run("stop", func(t *testing.T) {
 		me := newTestTraceExporter(t)
 		me.exportSpan(spanPairs["root"].oc)
-
-		time.Sleep(time.Millisecond) // wait for recv
-
 		me.stop()
+
 		if len(me.payloads()) != 1 {
 			t.Fatalf("expected to flush 1, got %d", len(me.payloads()))
 		}
@@ -91,8 +89,6 @@ func TestTraceExporter(t *testing.T) {
 		eq := equalFunc(t)
 		me := newTestTraceExporter(t)
 		me.exportSpan(spanPairs["error"].oc)
-
-		time.Sleep(time.Millisecond) // wait for recv
 		me.stop()
 
 		// sampler is updated after flush

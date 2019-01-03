@@ -75,6 +75,15 @@ func newTraceExporter(o Options) *traceExporter {
 	return e
 }
 
+func (e *traceExporter) exportSpan(s *trace.SpanData) {
+	select {
+	case e.in <- e.convertSpan(s):
+		// ok
+	default:
+		e.errors.log(errorTypeOverflow, nil)
+	}
+}
+
 func (e *traceExporter) loop() {
 	defer close(e.exit)
 	tick := time.NewTicker(flushInterval)
@@ -83,15 +92,7 @@ func (e *traceExporter) loop() {
 	for {
 		select {
 		case span := <-e.in:
-			if _, ok := span.Metrics[keySamplingPriority]; !ok {
-				e.sampler.applyPriority(span)
-			}
-			if err := e.payload.add(span); err != nil {
-				e.errors.log(errorTypeEncoding, err)
-			}
-			if e.payload.size() > flushThreshold {
-				e.flush()
-			}
+			e.receiveSpan(span)
 
 		case <-tick.C:
 			e.flush()
@@ -105,11 +106,15 @@ func (e *traceExporter) loop() {
 	}
 }
 
-func (e *traceExporter) exportSpan(s *trace.SpanData) {
-	select {
-	case e.in <- e.convertSpan(s):
-	default:
-		e.errors.log(errorTypeOverflow, nil)
+func (e *traceExporter) receiveSpan(span *ddSpan) {
+	if _, ok := span.Metrics[keySamplingPriority]; !ok {
+		e.sampler.applyPriority(span)
+	}
+	if err := e.payload.add(span); err != nil {
+		e.errors.log(errorTypeEncoding, err)
+	}
+	if e.payload.size() > flushThreshold {
+		e.flush()
 	}
 }
 
@@ -137,6 +142,16 @@ func (e *traceExporter) flush() {
 // order to not lose any tracing data. Only call Stop once per exporter. Repeated calls
 // will cause panic.
 func (e *traceExporter) stop() {
+loop:
+	// drain the input channel to catch anything the loop might not
+	for {
+		select {
+		case span := <-e.in:
+			e.receiveSpan(span)
+		default:
+			break loop
+		}
+	}
 	e.exit <- struct{}{}
 	<-e.exit
 }
