@@ -53,15 +53,12 @@ var spanPairs = map[string]struct {
 			Resource: "/a/b",
 			Start:    testStartTime.UnixNano(),
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
-			Metrics: map[string]float64{
-				"int64":             1,
-				samplingPriorityKey: ext.PriorityAutoKeep,
-			},
-			Service: "my-service",
+			Metrics:  map[string]float64{"int64": 1},
+			Service:  "my-service",
 			Meta: map[string]string{
 				"bool":               "true",
 				"str":                "abc",
-				statusDescriptionKey: "status-msg",
+				keyStatusDescription: "status-msg",
 			},
 		},
 	},
@@ -89,11 +86,9 @@ var spanPairs = map[string]struct {
 			Resource: "/a/b",
 			Start:    testStartTime.UnixNano(),
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
-			Metrics: map[string]float64{
-				samplingPriorityKey: ext.PriorityAutoKeep,
-			},
-			Service: "my-service",
-			Meta:    map[string]string{},
+			Metrics:  map[string]float64{},
+			Service:  "my-service",
+			Meta:     map[string]string{},
 		},
 	},
 	"error": {
@@ -121,11 +116,9 @@ var spanPairs = map[string]struct {
 			Resource: "/a/b",
 			Start:    testStartTime.UnixNano(),
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
-			Metrics: map[string]float64{
-				samplingPriorityKey: ext.PriorityAutoKeep,
-			},
-			Error:   1,
-			Service: "my-service",
+			Metrics:  map[string]float64{},
+			Error:    1,
+			Service:  "my-service",
 			Meta: map[string]string{
 				ext.ErrorMsg:  "status-msg",
 				ext.ErrorType: "cancelled",
@@ -161,7 +154,7 @@ var spanPairs = map[string]struct {
 			Start:    testStartTime.UnixNano(),
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
 			Metrics: map[string]float64{
-				samplingPriorityKey: ext.PriorityUserReject,
+				keySamplingPriority: ext.PriorityUserReject,
 			},
 			Service: "other-service",
 			Error:   1,
@@ -280,7 +273,7 @@ func TestSetTag(t *testing.T) {
 		setTag(span, "key", int64(12))
 		eq(span.Metrics["key"], float64(12))
 		setTag(span, ext.SamplingPriority, int64(1))
-		eq(span.Metrics[samplingPriorityKey], float64(1))
+		eq(span.Metrics[keySamplingPriority], float64(1))
 	})
 
 	t.Run("default", func(t *testing.T) {
