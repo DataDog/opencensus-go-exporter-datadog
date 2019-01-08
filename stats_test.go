@@ -103,3 +103,27 @@ func TestNilAggregation(t *testing.T) {
 		t.Errorf("Expected: %v, Got: %v", fmt.Errorf("aggregation *view.Aggregation is not supported"), actual)
 	}
 }
+
+func TestMetricNormalization(t *testing.T) {
+	if verifyMetricName("_Test") {
+		t.Error("Metric names cannot start with an underscore, this should fail.")
+	}
+	if verifyMetricName("1234_Test") {
+		t.Error("Metric names cannot start with a number, validation should fail.")
+	}
+	if !verifyMetricName("Test_metric.name") {
+		t.Error("Valid metric name, expected this to pass but it failed.")
+	}
+
+	if verifyMetricName("Test Metric Name") {
+		t.Error("Metric names cannot have spaces, this should fail.")
+	}
+
+	if verifyMetricName("Ã") {
+		t.Error("Metric names cannot include unicode, validation should fail.")
+	}
+
+	if verifyMetricName("test_unicode_Ã") {
+		t.Error("Metric names cannot include unicode, validation should fail.")
+	}
+}
