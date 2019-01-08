@@ -26,7 +26,7 @@ const (
 	DefaultStatsAddrUDS = "unix:///var/run/datadog/dsd.socket"
 )
 
-var beginsWithLetter, _ = regexp.Compile("^[^a-zA-Z]")
+var beginsWithLetter, _ = regexp.Compile("^[a-zA-Z]")
 
 // collector implements statsd.Client
 type statsExporter struct {
@@ -81,7 +81,7 @@ func verifyMetricName(metricName string) bool {
 		return false
 	}
 	// Must start with a letter
-	if beginsWithLetter.MatchString(metricName) {
+	if !beginsWithLetter.MatchString(metricName) {
 		log.Printf("Metric %s begins with non alphabetic character, it will be converted within Datadog", metricName)
 		return false
 	}
