@@ -7,6 +7,8 @@ package datadog
 
 import (
 	"fmt"
+	"log"
+	"regexp"
 	"sync"
 
 	"github.com/DataDog/datadog-go/statsd"
@@ -23,6 +25,8 @@ const (
 	// sockets.
 	DefaultStatsAddrUDS = "unix:///var/run/datadog/dsd.socket"
 )
+
+var beginsWithLetter, _ = regexp.Compile("^[^a-zA-Z]")
 
 // collector implements statsd.Client
 type statsExporter struct {
@@ -67,9 +71,27 @@ func (s *statsExporter) addViewData(vd *view.Data) {
 	}
 }
 
+// Metrics should adhere to Datadog rules, log a message if they aren't met.
+// https://docs.datadoghq.com/developers/metrics/#naming-metrics
+func verifyMetricName(metricName string) bool {
+
+	// Must be less than 200 chars
+	if len(metricName) > 200 {
+		log.Printf("Metric %s is longer than 200 characters, it will be truncated within Datadog", metricName)
+		return false
+	}
+	// Must start with a letter
+	if beginsWithLetter.MatchString(metricName) {
+		log.Printf("Metric %s begins with non alphabetic character, it will be converted within Datadog", metricName)
+		return false
+	}
+	return true
+}
+
 func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName string) error {
 	var err error
 	const rate = float64(1)
+	verifyMetricName(metricName)
 	client := s.client
 	opt := s.opts
 	tags := []string{}

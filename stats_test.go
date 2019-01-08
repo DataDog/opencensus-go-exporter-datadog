@@ -103,3 +103,15 @@ func TestNilAggregation(t *testing.T) {
 		t.Errorf("Expected: %v, Got: %v", fmt.Errorf("aggregation *view.Aggregation is not supported"), actual)
 	}
 }
+
+func TestMetricNormalization(t *testing.T) {
+	if verifyMetricName("_Test") {
+		t.Error("Expected metric validation to Fail, but it Passed")
+	}
+	if verifyMetricName("1234_Test") {
+		t.Error("Expected metric validation to Fail, but it Passed")
+	}
+	if !verifyMetricName("Test_") {
+		t.Error("Expected metric validation to Pass, but it Failed")
+	}
+}
