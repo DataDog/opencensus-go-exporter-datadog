@@ -11,6 +11,7 @@ import (
 
 	datadog "github.com/DataDog/opencensus-go-exporter-datadog"
 	"go.opencensus.io/trace"
+	ddtraceext "gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 )
 
 func main() {
@@ -37,4 +38,10 @@ func bar(ctx context.Context) {
 	defer span.End()
 
 	// Do bar...
+
+	// Set Datadog APM Trace Metadata
+	span.AddAttributes(
+		trace.StringAttribute(ddtraceext.ResourceName, "my-app-resource"),
+		// trace.StringAttribute(ddtraceext.SpanType, ddtraceext.SpanTypeWeb),
+	)
 }
