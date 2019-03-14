@@ -276,6 +276,15 @@ func TestSetTag(t *testing.T) {
 		eq(span.Metrics[keySamplingPriority], float64(1))
 	})
 
+	t.Run("float64", func(t *testing.T) {
+		eq := equalFunc(t)
+		span := testSpan()
+		setTag(span, "key", float64(12))
+		eq(span.Metrics["key"], float64(12))
+		setTag(span, ext.SamplingPriority, float64(1))
+		eq(span.Metrics[keySamplingPriority], float64(1))
+	})
+
 	t.Run("default", func(t *testing.T) {
 		span := testSpan()
 		setTag(span, "key", 1)

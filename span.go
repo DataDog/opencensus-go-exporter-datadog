@@ -99,23 +99,28 @@ func setTag(s *ddSpan, key string, val interface{}) {
 	switch v := val.(type) {
 	case string:
 		setStringTag(s, key, v)
-		return
 	case bool:
 		if v {
-			s.Meta[key] = "true"
+			setStringTag(s, key, "true")
 		} else {
-			s.Meta[key] = "false"
+			setStringTag(s, key, "false")
 		}
+	case float64:
+		setMetric(s, key, v)
 	case int64:
-		if key == ext.SamplingPriority {
-			s.Metrics[keySamplingPriority] = float64(v)
-		} else {
-			s.Metrics[key] = float64(v)
-		}
+		setMetric(s, key, float64(v))
 	default:
 		// should never happen according to docs, nevertheless
 		// we should account for this to avoid exceptions
-		s.Meta[key] = fmt.Sprintf("%v", v)
+		setStringTag(s, key, fmt.Sprintf("%v", v))
+	}
+}
+
+func setMetric(s *ddSpan, key string, v float64) {
+	if key == ext.SamplingPriority {
+		s.Metrics[keySamplingPriority] = v
+	} else {
+		s.Metrics[key] = v
 	}
 }
 
