@@ -49,7 +49,7 @@ func (e *traceExporter) convertSpan(s *trace.SpanData) *ddSpan {
 	span := &ddSpan{
 		TraceID:  binary.BigEndian.Uint64(s.SpanContext.TraceID[8:]),
 		SpanID:   binary.BigEndian.Uint64(s.SpanContext.SpanID[:]),
-		Name:     s.Name,
+		Name:     "opencensus",
 		Resource: s.Name,
 		Service:  e.opts.Service,
 		Start:    startNano,
