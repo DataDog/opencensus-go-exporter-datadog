@@ -265,6 +265,10 @@ func TestSetTag(t *testing.T) {
 		eq(span.Meta["key"], "true")
 		setTag(span, "key2", false)
 		eq(span.Meta["key2"], "false")
+		setTag(span, ext.AnalyticsEvent, true)
+		eq(span.Metrics[ext.EventSampleRate], 1.)
+		setTag(span, ext.AnalyticsEvent, false)
+		eq(span.Metrics[ext.EventSampleRate], 0.)
 	})
 
 	t.Run("int64", func(t *testing.T) {
@@ -283,6 +287,8 @@ func TestSetTag(t *testing.T) {
 		eq(span.Metrics["key"], float64(12))
 		setTag(span, ext.SamplingPriority, float64(1))
 		eq(span.Metrics[keySamplingPriority], float64(1))
+		setTag(span, ext.EventSampleRate, float64(0.4))
+		eq(span.Metrics[ext.EventSampleRate], float64(0.4))
 	})
 
 	t.Run("default", func(t *testing.T) {
