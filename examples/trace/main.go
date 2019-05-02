@@ -41,7 +41,7 @@ func bar(ctx context.Context) {
 
 	// Set Datadog APM Trace Metadata
 	span.AddAttributes(
-		trace.StringAttribute(ext.ResourceName, "my-app-resource"),
+		trace.StringAttribute(ext.ResourceName, "/foo/bar"),
 		trace.StringAttribute(ext.SpanType, ext.SpanTypeWeb),
 	)
 }
