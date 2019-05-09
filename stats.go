@@ -94,7 +94,7 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 			"squared_dev_sum": data.SumOfSquaredDev,
 		}
 		for _, percentile := range s.opts.EmitPercentiles {
-			metrics[fmt.Sprintf("%fp", percentile*100)] = calculatePercentile(percentile, v.Aggregation.Buckets, data.CountPerBucket)
+			metrics[percentile.buildMetricSuffix()] = calculatePercentile(percentile.Percentile, v.Aggregation.Buckets, data.CountPerBucket)
 		}
 
 		for name, value := range metrics {
