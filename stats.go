@@ -96,10 +96,11 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 		for name, value := range metrics {
 			err = client.Gauge(metricName+"."+name, value, opt.tagMetrics(row.Tags, tags), rate)
 		}
-
-		for x := range data.CountPerBucket {
-			addlTags := []string{"bucket_idx:" + fmt.Sprint(x)}
-			err = client.Gauge(metricName+".count_per_bucket", float64(data.CountPerBucket[x]), opt.tagMetrics(row.Tags, addlTags), rate)
+		if !s.opts.DisableCountPerBuckets {
+			for x := range data.CountPerBucket {
+				addlTags := []string{"bucket_idx:" + fmt.Sprint(x)}
+				err = client.Gauge(metricName+".count_per_bucket", float64(data.CountPerBucket[x]), opt.tagMetrics(row.Tags, addlTags), rate)
+			}
 		}
 		return err
 	default:
