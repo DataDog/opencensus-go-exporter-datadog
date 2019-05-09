@@ -7,6 +7,7 @@ package datadog
 
 import (
 	"fmt"
+	"math/rand"
 	"io"
 	"net"
 	"sort"
@@ -98,6 +99,7 @@ func TestUDSExportError(t *testing.T) {
 		t.Errorf("Expected an error")
 	}
 }
+
 func TestDistributionData(t *testing.T) {
 	conn, err := listenUDP("localhost:0")
 	if err != nil {
@@ -207,4 +209,85 @@ func TestNilAggregation(t *testing.T) {
 	if actual == nil {
 		t.Errorf("Expected: %v, Got: %v", fmt.Errorf("aggregation *view.Aggregation is not supported"), actual)
 	}
+}
+
+func Test_calculatePercentile(t *testing.T) {
+	var buckets []float64
+	for i := float64(-100); i < 100; i += 0.1 {
+		buckets = append(buckets, i)
+	}
+
+	normalDistribution := calculateNormalDistribution(buckets, 0, 100)
+	tsts := []struct {
+		description     string
+		expected        int64
+		percentile      float64
+		buckets         []float64
+		countsPerBucket []int64
+	}{
+		{
+			"Calculates 50th percentile for normal distribution",
+			0,
+			0.5,
+			buckets,
+			normalDistribution,
+		},
+		{
+			"Calculates 75th percentile for normal distribution",
+			44,
+			0.75,
+			buckets,
+			normalDistribution,
+		},
+		{
+			"Calculates 95th percentile for normal distribution",
+			86,
+			0.95,
+			buckets,
+			normalDistribution,
+		},
+		{
+			"Calculates 99th percentile for normal distribution",
+			97,
+			0.99,
+			buckets,
+			normalDistribution,
+		},
+		{
+			"Calculates 99.9th percentile for normal distribution",
+			99,
+			0.999,
+			buckets,
+			normalDistribution,
+		},
+	}
+
+	for _, tst := range tsts {
+		t.Run(tst.description, func(t *testing.T) {
+			got := calculatePercentile(tst.percentile, tst.buckets, tst.countsPerBucket)
+
+			if tst.expected != int64(got) {
+				t.Errorf("Expected: %v, Got: %v", tst.expected, got)
+			}
+		})
+
+	}
+}
+
+func calculateNormalDistribution(buckets []float64, seed int64, standardDeviation float64) []int64 {
+	r := rand.New(rand.NewSource(seed))
+
+	normalDistribution := make([]int64, len(buckets))
+	for n := 0; n < 1e6; n++ {
+		rnd := r.NormFloat64() * standardDeviation
+		var previousBucket float64
+		for bidx, bucket := range buckets {
+			if rnd > previousBucket && rnd <= bucket {
+				normalDistribution[bidx]++
+				break
+			}
+			previousBucket = bucket
+		}
+	}
+	return normalDistribution
 }

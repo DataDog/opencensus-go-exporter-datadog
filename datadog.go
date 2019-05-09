@@ -74,8 +74,18 @@ type Options struct {
 	// exported spans.
 	GlobalTags map[string]interface{}
 
+	// DistributionMetricOptions configures distribution metrics
+	DistributionMetricOptions
+}
+
+// DistributionMetricOptions contain options for configuring how distribution metrics are emitted to DataDog
+type DistributionMetricOptions struct {
 	// DisableCountPerBuckets specifies whether to emit count_per_bucket metrics
 	DisableCountPerBuckets bool
+
+	// EmitPercentiles given a list of percentiles [0.5, 0.95, 0.99], for each one will estimate the percentile
+	// from the Distribution metric and emit a unique metric for each
+	EmitPercentiles []float64
 }
 
 func (o *Options) onError(err error) {

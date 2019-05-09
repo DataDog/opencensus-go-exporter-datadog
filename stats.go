@@ -7,6 +7,7 @@ package datadog
 
 import (
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/DataDog/datadog-go/statsd"
@@ -92,6 +93,9 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 			"avg":             data.Mean,
 			"squared_dev_sum": data.SumOfSquaredDev,
 		}
+		for _, percentile := range s.opts.EmitPercentiles {
+			metrics[fmt.Sprintf("%fp", percentile*100)] = calculatePercentile(percentile, v.Aggregation.Buckets, data.CountPerBucket)
+		}
 
 		for name, value := range metrics {
 			err = client.Gauge(metricName+"."+name, value, opt.tagMetrics(row.Tags, tags), rate)
@@ -106,4 +110,23 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 	default:
 		return fmt.Errorf("aggregation %T is not supported", v.Aggregation)
 	}
+}
+
+func calculatePercentile(percentile float64, buckets []float64, countPerBucket []int64) float64 {
+	cumulativePerBucket := make([]int64, len(countPerBucket))
+	var sum int64
+	for n, count := range countPerBucket {
+		sum += count
+		cumulativePerBucket[n] = sum
+	}
+	atBin := int64(math.Floor(percentile * float64(sum)))
+
+	var previousCount int64
+	for n, count := range cumulativePerBucket {
+		if atBin >= previousCount && atBin <= count {
+			return buckets[n]
+		}
+		previousCount = count
+	}
+	return buckets[len(buckets)-1]
 }
