@@ -75,12 +75,6 @@ type Options struct {
 	// exported spans.
 	GlobalTags map[string]interface{}
 
-	// DistributionMetricOptions configures distribution metrics
-	DistributionMetricOptions
-}
-
-// DistributionMetricOptions contain options for configuring how distribution metrics are emitted to DataDog
-type DistributionMetricOptions struct {
 	// DisableCountPerBuckets specifies whether to emit count_per_bucket metrics
 	DisableCountPerBuckets bool
 

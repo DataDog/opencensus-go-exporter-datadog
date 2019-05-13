@@ -307,7 +307,7 @@ func TestPercentile_buildMetricSuffix(t *testing.T) {
 	}
 
 	for _, tst := range tsts {
-		t.Run("", func(t *testing.T) {
+		t.Run(fmt.Sprintf("%f", tst.Percentile.Percentile), func(t *testing.T) {
 			got := tst.buildMetricSuffix()
 			if got != tst.Expected {
 				t.Errorf("Expected: %v, Got %v\n", tst.Expected, got)
