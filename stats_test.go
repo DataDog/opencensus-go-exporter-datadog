@@ -113,42 +113,36 @@ func Test_calculatePercentile(t *testing.T) {
 
 	normalDistribution := calculateNormalDistribution(buckets, 0, 100)
 	tsts := []struct {
-		description     string
 		expected        int64
 		percentile      float64
 		buckets         []float64
 		countsPerBucket []int64
 	}{
 		{
-			"Calculates 50th percentile for normal distribution",
 			0,
 			0.5,
 			buckets,
 			normalDistribution,
 		},
 		{
-			"Calculates 75th percentile for normal distribution",
 			44,
 			0.75,
 			buckets,
 			normalDistribution,
 		},
 		{
-			"Calculates 95th percentile for normal distribution",
 			86,
 			0.95,
 			buckets,
 			normalDistribution,
 		},
 		{
-			"Calculates 99th percentile for normal distribution",
 			97,
 			0.99,
 			buckets,
 			normalDistribution,
 		},
 		{
-			"Calculates 99.9th percentile for normal distribution",
 			99,
 			0.999,
 			buckets,
@@ -157,7 +151,7 @@ func Test_calculatePercentile(t *testing.T) {
 	}
 
 	for _, tst := range tsts {
-		t.Run(tst.description, func(t *testing.T) {
+		t.Run(fmt.Sprintf("%v", tst.percentile), func(t *testing.T) {
 			got := calculatePercentile(tst.percentile, tst.buckets, tst.countsPerBucket)
 
 			if tst.expected != int64(got) {
