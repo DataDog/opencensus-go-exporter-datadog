@@ -6,7 +6,6 @@
 package datadog
 
 import (
-	"fmt"
 	"log"
 	"regexp"
 	"strings"
@@ -78,39 +77,9 @@ type Options struct {
 	// DisableCountPerBuckets specifies whether to emit count_per_bucket metrics
 	DisableCountPerBuckets bool
 
-	// EmitPercentiles given a list of percentiles [0.5, 0.95, 0.99], for each one will estimate the percentile
-	// from the Distribution metric and emit a unique metric for each
-	//
-	// Example: []Percentile{{0.5, "50p"},{0.95, "95p"}, {0.99, "99p"}}
-	EmitPercentiles []Percentile
-}
-
-// Percentile indicates the percentile to calculate for a distribution metric and its corresponding name
-type Percentile struct {
-	// Percentile must be in range [0, 100].
-	Percentile float64
-
-	// MetricSuffix (optional) controls the suffix of the metric name that is emitted. If not provided,
-	// will be formatted to 2 decimal places.
-	//
-	// Example: "99p" would emit `server_latency.99p if the distribution metric name was server_latency
-	MetricSuffix string
-}
-
-// Commonly used percentiles
-var (
-	Percentile50th  = Percentile{Percentile: 0.5, MetricSuffix: "median"}
-	Percentile75th  = Percentile{Percentile: 0.75, MetricSuffix: "75p"}
-	Percentile95th  = Percentile{Percentile: 0.95, MetricSuffix: "95p"}
-	Percentile99th  = Percentile{Percentile: 0.99, MetricSuffix: "99p"}
-	Percentile999th = Percentile{Percentile: 0.999, MetricSuffix: "999p"}
-)
-
-func (p Percentile) buildMetricSuffix() string {
-	if p.MetricSuffix != "" {
-		return p.MetricSuffix
-	}
-	return fmt.Sprintf("%.2fp", p.Percentile*100)
+	// HistogramPercentiles given a list of percentiles [0.5, 0.95, 0.99], for each one will estimate the
+	// percentile from the Distribution metric and emit a unique metric for each
+	HistogramPercentiles []float64
 }
 
 func (o *Options) onError(err error) {

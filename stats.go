@@ -44,6 +44,12 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 		return nil, err
 	}
 
+	for _, percentile := range o.HistogramPercentiles {
+		if percentile < 0 || percentile > 1 {
+			return nil, fmt.Errorf("'HistogramPercentiles' must be between 0 and 1: Received %f", percentile)
+		}
+	}
+
 	return &statsExporter{
 		opts:     o,
 		viewData: make(map[string]*view.Data),
@@ -93,8 +99,8 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 			"avg":             data.Mean,
 			"squared_dev_sum": data.SumOfSquaredDev,
 		}
-		for _, percentile := range s.opts.EmitPercentiles {
-			metrics[percentile.buildMetricSuffix()] = calculatePercentile(percentile.Percentile, v.Aggregation.Buckets, data.CountPerBucket)
+		for _, percentile := range s.opts.HistogramPercentiles {
+			metrics[buildMetricNameForPercentile(percentile)] = calculatePercentile(percentile, v.Aggregation.Buckets, data.CountPerBucket)
 		}
 
 		for name, value := range metrics {
@@ -129,4 +135,11 @@ func calculatePercentile(percentile float64, buckets []float64, countPerBucket [
 		previousCount = count
 	}
 	return buckets[len(buckets)-1]
+}
+
+func buildMetricNameForPercentile(percentile float64) string {
+	if percentile > 0.99 {
+		return fmt.Sprintf("%dpercentile", int64(percentile*1000+0.5))
+	}
+	return fmt.Sprintf("%dpercentile", int64(percentile*100+0.5))
 }
