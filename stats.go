@@ -8,6 +8,7 @@ package datadog
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"sync"
 
 	"github.com/DataDog/datadog-go/statsd"
@@ -27,10 +28,11 @@ const (
 
 // collector implements statsd.Client
 type statsExporter struct {
-	opts     Options
-	client   *statsd.Client
-	mu       sync.Mutex // mu guards viewData
-	viewData map[string]*view.Data
+	opts        Options
+	client      *statsd.Client
+	mu          sync.Mutex // mu guards viewData
+	viewData    map[string]*view.Data
+	percentiles []float64
 }
 
 func newStatsExporter(o Options) (*statsExporter, error) {
@@ -44,16 +46,23 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 		return nil, err
 	}
 
-	for _, percentile := range o.HistogramPercentiles {
+	percentiles := make([]float64, len(o.HistogramPercentiles))
+	for n, percentileStr := range o.HistogramPercentiles {
+		percentile, err := strconv.ParseFloat(percentileStr, 64)
+		if err != nil {
+			return nil, fmt.Errorf("'HistogramPercentiles' must be in float format: Received %s", percentileStr)
+		}
 		if percentile < 0 || percentile > 1 {
 			return nil, fmt.Errorf("'HistogramPercentiles' must be between 0 and 1: Received %f", percentile)
 		}
+		percentiles[n] = percentile
 	}
 
 	return &statsExporter{
-		opts:     o,
-		viewData: make(map[string]*view.Data),
-		client:   client,
+		opts:        o,
+		viewData:    make(map[string]*view.Data),
+		client:      client,
+		percentiles: percentiles,
 	}, nil
 }
 
@@ -99,7 +108,7 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 			"avg":             data.Mean,
 			"squared_dev_sum": data.SumOfSquaredDev,
 		}
-		for _, percentile := range s.opts.HistogramPercentiles {
+		for _, percentile := range s.percentiles {
 			metrics[buildMetricNameForPercentile(percentile)] = calculatePercentile(percentile, v.Aggregation.Buckets, data.CountPerBucket)
 		}
 
