@@ -7,6 +7,7 @@ package datadog
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"testing"
 	"time"
@@ -111,9 +112,12 @@ func Test_calculatePercentile(t *testing.T) {
 		buckets = append(buckets, i)
 	}
 
-	normalDistribution := calculateNormalDistribution(buckets, 0, 100)
+	// Calculate a normal distribution with a standard deviation of 1.
+	normalDistribution := calculateNormalDistribution(buckets, 0, 1)
+
+	// The following tests can be confirmed using the Cumulative Standard Normal table (https://en.wikipedia.org/wiki/Standard_normal_table#Cumulative).
 	tsts := []struct {
-		expected        int64
+		expected        float64
 		percentile      float64
 		buckets         []float64
 		countsPerBucket []int64
@@ -125,26 +129,20 @@ func Test_calculatePercentile(t *testing.T) {
 			normalDistribution,
 		},
 		{
-			44,
+			0.69,
 			0.75,
 			buckets,
 			normalDistribution,
 		},
 		{
-			86,
+			1.67,
 			0.95,
 			buckets,
 			normalDistribution,
 		},
 		{
-			97,
+			2.33,
 			0.99,
-			buckets,
-			normalDistribution,
-		},
-		{
-			99,
-			0.999,
 			buckets,
 			normalDistribution,
 		},
@@ -154,14 +152,15 @@ func Test_calculatePercentile(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", tst.percentile), func(t *testing.T) {
 			got := calculatePercentile(tst.percentile, tst.buckets, tst.countsPerBucket)
 
-			if tst.expected != int64(got) {
-				t.Errorf("Expected: %v, Got: %v", tst.expected, got)
+			if math.Abs(tst.expected-got) > 0.1 {
+				t.Errorf("Expected: %v to be within 0.1 of %v", tst.expected, got)
 			}
 		})
 
 	}
 }
 
+// Given a seed and a set of latency buckets, uses rand.NormFloat64 to generate a normal distribution
 func calculateNormalDistribution(buckets []float64, seed int64, standardDeviation float64) []int64 {
 	r := rand.New(rand.NewSource(seed))
 
