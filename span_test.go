@@ -58,6 +58,8 @@ var spanPairs = map[string]struct {
 			Meta: map[string]string{
 				"bool":               "true",
 				"str":                "abc",
+				keyStatus:            "ok",
+				keyStatusCode:        "0",
 				keyStatusDescription: "status-msg",
 			},
 		},
@@ -88,10 +90,13 @@ var spanPairs = map[string]struct {
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
 			Metrics:  map[string]float64{},
 			Service:  "my-service",
-			Meta:     map[string]string{},
+			Meta: map[string]string{
+				keyStatus:     "ok",
+				keyStatusCode: "0",
+			},
 		},
 	},
-	"error": {
+	"server_error_4xx": {
 		oc: &trace.SpanData{
 			SpanContext: trace.SpanContext{
 				TraceID:      trace.TraceID([16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}),
@@ -104,7 +109,42 @@ var spanPairs = map[string]struct {
 			EndTime:    testEndTime,
 			Attributes: map[string]interface{}{},
 			Status: trace.Status{
-				Code:    1,
+				Code:    trace.StatusCodeCancelled,
+				Message: "status-msg",
+			},
+		},
+		dd: &ddSpan{
+			TraceID:  651345242494996240,
+			SpanID:   72623859790382856,
+			Type:     "server",
+			Name:     "opencensus",
+			Resource: "/a/b",
+			Start:    testStartTime.UnixNano(),
+			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
+			Metrics:  map[string]float64{},
+			Error:    0,
+			Service:  "my-service",
+			Meta: map[string]string{
+				keyStatus:            "cancelled",
+				keyStatusCode:        "1",
+				keyStatusDescription: "status-msg",
+			},
+		},
+	},
+	"server_error_5xx": {
+		oc: &trace.SpanData{
+			SpanContext: trace.SpanContext{
+				TraceID:      trace.TraceID([16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}),
+				SpanID:       trace.SpanID([8]byte{1, 2, 3, 4, 5, 6, 7, 8}),
+				TraceOptions: 1,
+			},
+			SpanKind:   trace.SpanKindServer,
+			Name:       "/a/b",
+			StartTime:  testStartTime,
+			EndTime:    testEndTime,
+			Attributes: map[string]interface{}{},
+			Status: trace.Status{
+				Code:    trace.StatusCodeInternal,
 				Message: "status-msg",
 			},
 		},
@@ -120,8 +160,83 @@ var spanPairs = map[string]struct {
 			Error:    1,
 			Service:  "my-service",
 			Meta: map[string]string{
-				ext.ErrorMsg:  "status-msg",
-				ext.ErrorType: "cancelled",
+				ext.ErrorMsg:         "status-msg",
+				ext.ErrorType:        "internal",
+				keyStatus:            "internal",
+				keyStatusCode:        "13",
+				keyStatusDescription: "status-msg",
+			},
+		},
+	},
+	"client_error_4xx": {
+		oc: &trace.SpanData{
+			SpanContext: trace.SpanContext{
+				TraceID:      trace.TraceID([16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}),
+				SpanID:       trace.SpanID([8]byte{1, 2, 3, 4, 5, 6, 7, 8}),
+				TraceOptions: 1,
+			},
+			SpanKind:   trace.SpanKindClient,
+			Name:       "/a/b",
+			StartTime:  testStartTime,
+			EndTime:    testEndTime,
+			Attributes: map[string]interface{}{},
+			Status: trace.Status{
+				Code:    trace.StatusCodeCancelled,
+				Message: "status-msg",
+			},
+		},
+		dd: &ddSpan{
+			TraceID:  651345242494996240,
+			SpanID:   72623859790382856,
+			Type:     "client",
+			Name:     "opencensus",
+			Resource: "/a/b",
+			Start:    testStartTime.UnixNano(),
+			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
+			Metrics:  map[string]float64{},
+			Error:    1,
+			Service:  "my-service",
+			Meta: map[string]string{
+				ext.ErrorMsg:         "status-msg",
+				ext.ErrorType:        "cancelled",
+				keyStatus:            "cancelled",
+				keyStatusCode:        "1",
+				keyStatusDescription: "status-msg",
+			},
+		},
+	},
+	"client_error_5xx": {
+		oc: &trace.SpanData{
+			SpanContext: trace.SpanContext{
+				TraceID:      trace.TraceID([16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}),
+				SpanID:       trace.SpanID([8]byte{1, 2, 3, 4, 5, 6, 7, 8}),
+				TraceOptions: 1,
+			},
+			SpanKind:   trace.SpanKindClient,
+			Name:       "/a/b",
+			StartTime:  testStartTime,
+			EndTime:    testEndTime,
+			Attributes: map[string]interface{}{},
+			Status: trace.Status{
+				Code:    trace.StatusCodeInternal,
+				Message: "status-msg",
+			},
+		},
+		dd: &ddSpan{
+			TraceID:  651345242494996240,
+			SpanID:   72623859790382856,
+			Type:     "client",
+			Name:     "opencensus",
+			Resource: "/a/b",
+			Start:    testStartTime.UnixNano(),
+			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
+			Metrics:  map[string]float64{},
+			Error:    0,
+			Service:  "my-service",
+			Meta: map[string]string{
+				keyStatus:            "internal",
+				keyStatusCode:        "13",
+				keyStatusDescription: "status-msg",
 			},
 		},
 	},
@@ -158,7 +273,10 @@ var spanPairs = map[string]struct {
 			},
 			Service: "other-service",
 			Error:   1,
-			Meta:    map[string]string{},
+			Meta: map[string]string{
+				keyStatus:     "ok",
+				keyStatusCode: "0",
+			},
 		},
 	},
 	"slash": {
@@ -182,8 +300,11 @@ var spanPairs = map[string]struct {
 			Start:    testStartTime.UnixNano(),
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
 			Service:  "my-service",
-			Meta:     map[string]string{},
-			Metrics:  map[string]float64{},
+			Meta: map[string]string{
+				keyStatus:     "ok",
+				keyStatusCode: "0",
+			},
+			Metrics: map[string]float64{},
 		},
 	},
 }

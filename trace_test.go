@@ -88,7 +88,7 @@ func TestTraceExporter(t *testing.T) {
 	t.Run("sampler", func(t *testing.T) {
 		eq := equalFunc(t)
 		me := newTestTraceExporter(t)
-		me.exportSpan(spanPairs["error"].oc)
+		me.exportSpan(spanPairs["server_error_5xx"].oc)
 		me.stop()
 
 		// sampler is updated after flush
