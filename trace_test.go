@@ -63,7 +63,7 @@ func TestTraceExporter(t *testing.T) {
 		me := newTestTraceExporter(t)
 		defer me.stop()
 		span := spanPairs["tags"].oc
-		count := 5 // 5 spans should take us overboard
+		count := 4 // 4 spans should take us overboard
 		for i := 0; i < count; i++ {
 			me.exportSpan(span)
 		}

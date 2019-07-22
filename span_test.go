@@ -448,6 +448,7 @@ func TestSetTag(t *testing.T) {
 // if there is a type mismatch.
 func equalFunc(t *testing.T) func(got, want interface{}) {
 	return func(a, b interface{}) {
+		t.Helper()
 		if !reflect.DeepEqual(a, b) {
 			t.Fatalf("mismatch: got %v, wanted %v", a, b)
 		}
