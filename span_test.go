@@ -58,7 +58,7 @@ var spanPairs = map[string]struct {
 			Meta: map[string]string{
 				"bool":               "true",
 				"str":                "abc",
-				keyStatus:            "ok",
+				keyStatus:            "OK",
 				keyStatusCode:        "0",
 				keyStatusDescription: "status-msg",
 			},
@@ -91,7 +91,7 @@ var spanPairs = map[string]struct {
 			Metrics:  map[string]float64{},
 			Service:  "my-service",
 			Meta: map[string]string{
-				keyStatus:     "ok",
+				keyStatus:     "OK",
 				keyStatusCode: "0",
 			},
 		},
@@ -125,7 +125,7 @@ var spanPairs = map[string]struct {
 			Error:    0,
 			Service:  "my-service",
 			Meta: map[string]string{
-				keyStatus:            "cancelled",
+				keyStatus:            "CANCELLED",
 				keyStatusCode:        "1",
 				keyStatusDescription: "status-msg",
 			},
@@ -161,8 +161,8 @@ var spanPairs = map[string]struct {
 			Service:  "my-service",
 			Meta: map[string]string{
 				ext.ErrorMsg:         "status-msg",
-				ext.ErrorType:        "internal",
-				keyStatus:            "internal",
+				ext.ErrorType:        "INTERNAL",
+				keyStatus:            "INTERNAL",
 				keyStatusCode:        "13",
 				keyStatusDescription: "status-msg",
 			},
@@ -198,8 +198,8 @@ var spanPairs = map[string]struct {
 			Service:  "my-service",
 			Meta: map[string]string{
 				ext.ErrorMsg:         "status-msg",
-				ext.ErrorType:        "cancelled",
-				keyStatus:            "cancelled",
+				ext.ErrorType:        "CANCELLED",
+				keyStatus:            "CANCELLED",
 				keyStatusCode:        "1",
 				keyStatusDescription: "status-msg",
 			},
@@ -234,7 +234,7 @@ var spanPairs = map[string]struct {
 			Error:    0,
 			Service:  "my-service",
 			Meta: map[string]string{
-				keyStatus:            "internal",
+				keyStatus:            "INTERNAL",
 				keyStatusCode:        "13",
 				keyStatusDescription: "status-msg",
 			},
@@ -274,7 +274,7 @@ var spanPairs = map[string]struct {
 			Service: "other-service",
 			Error:   1,
 			Meta: map[string]string{
-				keyStatus:     "ok",
+				keyStatus:     "OK",
 				keyStatusCode: "0",
 			},
 		},
@@ -301,7 +301,7 @@ var spanPairs = map[string]struct {
 			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
 			Service:  "my-service",
 			Meta: map[string]string{
-				keyStatus:     "ok",
+				keyStatus:     "OK",
 				keyStatusCode: "0",
 			},
 			Metrics: map[string]float64{},

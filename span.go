@@ -15,45 +15,32 @@ import (
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/ext"
 )
 
-// statusCodes maps (*trace.SpanData).Status.Code to their message and http code. See:
+// statusCodes maps (*trace.SpanData).Status.Code to their message and http status code. See:
 // https://github.com/googleapis/googleapis/blob/master/google/rpc/code.proto.
-var statusCodes = map[int32]statusCode{
-	trace.StatusCodeOK:                 {message: "ok", httpCode: http.StatusOK},
-	trace.StatusCodeCancelled:          {message: "cancelled", httpCode: 499},
-	trace.StatusCodeUnknown:            {message: "unknown", httpCode: http.StatusInternalServerError},
-	trace.StatusCodeInvalidArgument:    {message: "invalid_argument", httpCode: http.StatusBadRequest},
-	trace.StatusCodeDeadlineExceeded:   {message: "deadline_exceeded", httpCode: http.StatusGatewayTimeout},
-	trace.StatusCodeNotFound:           {message: "not_found", httpCode: http.StatusNotFound},
-	trace.StatusCodeAlreadyExists:      {message: "already_exists", httpCode: http.StatusConflict},
-	trace.StatusCodePermissionDenied:   {message: "permission_denied", httpCode: http.StatusForbidden},
-	trace.StatusCodeResourceExhausted:  {message: "resource_exhausted", httpCode: http.StatusTooManyRequests},
-	trace.StatusCodeFailedPrecondition: {message: "failed_precondition", httpCode: http.StatusBadRequest},
-	trace.StatusCodeAborted:            {message: "aborted", httpCode: http.StatusConflict},
-	trace.StatusCodeOutOfRange:         {message: "out_of_range", httpCode: http.StatusBadRequest},
-	trace.StatusCodeUnimplemented:      {message: "unimplemented", httpCode: http.StatusNotImplemented},
-	trace.StatusCodeInternal:           {message: "internal", httpCode: http.StatusInternalServerError},
-	trace.StatusCodeUnavailable:        {message: "unavailable", httpCode: http.StatusServiceUnavailable},
-	trace.StatusCodeDataLoss:           {message: "data_loss", httpCode: http.StatusNotImplemented},
-	trace.StatusCodeUnauthenticated:    {message: "unauthenticated", httpCode: http.StatusUnauthorized},
+var statusCodes = map[int32]codeDetails{
+	trace.StatusCodeOK:                 {message: "OK", status: http.StatusOK},
+	trace.StatusCodeCancelled:          {message: "CANCELLED", status: 499},
+	trace.StatusCodeUnknown:            {message: "UNKNOWN", status: http.StatusInternalServerError},
+	trace.StatusCodeInvalidArgument:    {message: "INVALID_ARGUMENT", status: http.StatusBadRequest},
+	trace.StatusCodeDeadlineExceeded:   {message: "DEADLINE_EXCEEDED", status: http.StatusGatewayTimeout},
+	trace.StatusCodeNotFound:           {message: "NOT_FOUND", status: http.StatusNotFound},
+	trace.StatusCodeAlreadyExists:      {message: "ALREADY_EXISTS", status: http.StatusConflict},
+	trace.StatusCodePermissionDenied:   {message: "PERMISSION_DENIED", status: http.StatusForbidden},
+	trace.StatusCodeResourceExhausted:  {message: "RESOURCE_EXHAUSTED", status: http.StatusTooManyRequests},
+	trace.StatusCodeFailedPrecondition: {message: "FAILED_PRECONDITION", status: http.StatusBadRequest},
+	trace.StatusCodeAborted:            {message: "ABORTED", status: http.StatusConflict},
+	trace.StatusCodeOutOfRange:         {message: "OUT_OF_RANGE", status: http.StatusBadRequest},
+	trace.StatusCodeUnimplemented:      {message: "UNIMPLEMENTED", status: http.StatusNotImplemented},
+	trace.StatusCodeInternal:           {message: "INTERNAL", status: http.StatusInternalServerError},
+	trace.StatusCodeUnavailable:        {message: "UNAVAILABLE", status: http.StatusServiceUnavailable},
+	trace.StatusCodeDataLoss:           {message: "DATA_LOSS", status: http.StatusNotImplemented},
+	trace.StatusCodeUnauthenticated:    {message: "UNAUTHENTICATED", status: http.StatusUnauthorized},
 }
 
-type statusCode struct {
-	message  string
-	httpCode int
-}
-
-func statusMessage(code int32) string {
-	if sc, exists := statusCodes[code]; exists {
-		return sc.message
-	}
-	return "error code " + strconv.FormatInt(int64(code), 10)
-}
-
-func httpCode(code int32) int {
-	if sc, exists := statusCodes[code]; exists {
-		return sc.httpCode
-	}
-	return 500
+// codeDetails specifies information about a trace status code.
+type codeDetails struct {
+	message string // status message
+	status  int    // corresponding HTTP status code
 }
 
 // convertSpan takes an OpenCensus span and returns a Datadog span.
@@ -74,33 +61,38 @@ func (e *traceExporter) convertSpan(s *trace.SpanData) *ddSpan {
 		span.ParentID = binary.BigEndian.Uint64(s.ParentSpanID[:])
 	}
 
-	httpCode := httpCode(s.Status.Code)
+	code, ok := statusCodes[s.Status.Code]
+	if !ok {
+		code = codeDetails{
+			message: "ERR_CODE_" + strconv.FormatInt(int64(s.Status.Code), 10),
+			status:  http.StatusInternalServerError,
+		}
+	}
+
 	switch s.SpanKind {
 	case trace.SpanKindClient:
 		span.Type = "client"
-		if httpCode >= 400 && httpCode < 500 {
+		if code.status/100 == 4 {
 			span.Error = 1
 		}
 	case trace.SpanKindServer:
 		span.Type = "server"
-		if httpCode >= 500 && httpCode < 600 {
-			span.Error = 1
-		}
+		fallthrough
 	default:
-		if httpCode >= 500 && httpCode < 600 {
+		if code.status/100 == 5 {
 			span.Error = 1
 		}
 	}
 
 	if span.Error == 1 {
-		span.Meta[ext.ErrorType] = statusMessage(s.Status.Code)
+		span.Meta[ext.ErrorType] = code.message
 		if msg := s.Status.Message; msg != "" {
 			span.Meta[ext.ErrorMsg] = msg
 		}
 	}
 
 	span.Meta[keyStatusCode] = strconv.Itoa(int(s.Status.Code))
-	span.Meta[keyStatus] = statusMessage(s.Status.Code)
+	span.Meta[keyStatus] = code.message
 	if msg := s.Status.Message; msg != "" {
 		span.Meta[keyStatusDescription] = msg
 	}
