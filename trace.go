@@ -84,7 +84,8 @@ func (e *traceExporter) exportSpan(s *trace.SpanData) {
 	}
 }
 
-// Loop listens on exit channel to flush any remaining spans to the transport
+// loop consumes the input channel and also listens on exit channel
+// to cleanly stop the exporter, flushing any remaining spans to the transport
 // and reporting any errors.
 func (e *traceExporter) loop() {
 	defer close(e.exit)
@@ -151,11 +152,10 @@ func (e *traceExporter) flush() {
 	e.payload.reset()
 }
 
-// Stop help cleanly stops the exporter by sending to channel exit,
-// which will trigger loop to do the action.
-// Make sure to always call Stop at the end of your program
-// in order to not lose any tracing data.
-// Only call Stop once per exporter. Repeated calls will cause panic.
+// stop() notify loop() via exit channel to cleanly stops the exporter.
+// Make sure to always call stop() at the end of your program in order to
+// not lose any tracing data. Only call stop() once per exporter.
+// Repeated calls will cause panic.
 func (e *traceExporter) stop() {
 	e.exit <- struct{}{}
 	<-e.exit
