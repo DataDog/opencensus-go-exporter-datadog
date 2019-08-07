@@ -13,7 +13,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"sync"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -55,7 +54,6 @@ type payload struct {
 	// headerlessSize specifies the size of the payload in bytes, excluding the header
 	// which can range between 1 to 5 bytes, depending on len(traces).
 	headerlessSize int
-	mux            sync.Mutex
 }
 
 func newPayload() *payload {
@@ -64,8 +62,6 @@ func newPayload() *payload {
 
 // reset resets the payload, making it ready to use for a new buffer.
 func (p *payload) reset() {
-	p.mux.Lock()
-	defer p.mux.Unlock()
 	p.traces = make(map[uint64]*packedSpans)
 	p.headerlessSize = 0
 }
@@ -73,15 +69,11 @@ func (p *payload) reset() {
 // size returns the number of bytes that the resulting payload would occupy given
 // the current state.
 func (p *payload) size() int {
-	p.mux.Lock()
-	defer p.mux.Unlock()
 	return p.headerlessSize + arrayHeaderSize(uint64(len(p.traces)))
 }
 
 // add adds the given span to the payload.
 func (p *payload) add(span *ddSpan) error {
-	p.mux.Lock()
-	defer p.mux.Unlock()
 	if uint(len(p.traces)) >= maxLength {
 		return errOverflow
 	}
@@ -100,8 +92,6 @@ func (p *payload) add(span *ddSpan) error {
 
 // buffer creates a copy of the msgpack-encoded payload and returns it.
 func (p *payload) buffer() *bytes.Buffer {
-	p.mux.Lock()
-	defer p.mux.Unlock()
 	var (
 		buf    bytes.Buffer
 		header [8]byte
