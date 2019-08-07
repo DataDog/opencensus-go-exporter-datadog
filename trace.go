@@ -154,9 +154,6 @@ func (e *traceExporter) flush() {
 
 // stop signals the loop goroutine to finish.
 // This blocks until the loop goroutine closes the exit channel.
-// Make sure to always call stop() at the end of your program in order to
-// not lose any tracing data. Only call stop() once per exporter.
-// Repeated calls will cause panic.
 func (e *traceExporter) stop() {
 	e.exit <- struct{}{}
 	<-e.exit
