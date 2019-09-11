@@ -38,16 +38,18 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 		endpoint = DefaultStatsAddrUDP
 	}
 
-	client, err := statsd.New(endpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	return &statsExporter{
+	exporter := &statsExporter{
 		opts:     o,
 		viewData: make(map[string]*view.Data),
-		client:   client,
-	}, nil
+	}
+
+	var err error
+	if o.Buffered {
+		exporter.client, err = statsd.NewBuffered(endpoint, o.MaxMessagesPerPayload)
+	} else {
+		exporter.client, err = statsd.New(endpoint)
+	}
+	return exporter, err
 }
 
 func (s *statsExporter) addViewData(vd *view.Data) {

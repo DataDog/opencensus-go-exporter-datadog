@@ -73,6 +73,15 @@ type Options struct {
 	// GlobalTags holds a set of tags that will automatically be applied to all
 	// exported spans.
 	GlobalTags map[string]interface{}
+
+	// Buffered allows to pack multiple DogStatsD messages in one payload. Messages will be buffered
+	// until the total size of the payload exceeds MaxMessagesPerPayload metrics, events and/or service
+	// checks or after 100ms since the payload startedto be built.
+	Buffered bool
+
+	// MaxMessagesPerPayload is the maximum number of metrics, events and/or service checks a single payload will contain.
+	// Note that this option only takes effect when the client is buffered.
+	MaxMessagesPerPayload int
 }
 
 func (o *Options) onError(err error) {
