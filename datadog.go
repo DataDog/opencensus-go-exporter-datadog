@@ -73,6 +73,13 @@ type Options struct {
 	// GlobalTags holds a set of tags that will automatically be applied to all
 	// exported spans.
 	GlobalTags map[string]interface{}
+
+	// DisableCountPerBuckets specifies whether to emit count_per_bucket metrics
+	DisableCountPerBuckets bool
+
+	// HistogramPercentiles given a list of percentiles ["0.5", "0.95", "0.99"], for each one will estimate the
+	// percentile from the Distribution metric and emit a unique metric for each
+	HistogramPercentiles []string
 }
 
 func (o *Options) onError(err error) {

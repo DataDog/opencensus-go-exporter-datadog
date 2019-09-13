@@ -7,6 +7,8 @@ package datadog
 
 import (
 	"fmt"
+	"math"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -102,4 +104,77 @@ func TestNilAggregation(t *testing.T) {
 	if actual == nil {
 		t.Errorf("Expected: %v, Got: %v", fmt.Errorf("aggregation *view.Aggregation is not supported"), actual)
 	}
+}
+
+func Test_calculatePercentile(t *testing.T) {
+	var buckets []float64
+	for i := float64(-100); i < 100; i += 0.1 {
+		buckets = append(buckets, i)
+	}
+
+	// Calculate a normal distribution with a standard deviation of 1.
+	normalDistribution := calculateNormalDistribution(buckets, 0, 1)
+
+	// The following tests can be confirmed using the Cumulative Standard Normal table (https://en.wikipedia.org/wiki/Standard_normal_table#Cumulative).
+	tsts := []struct {
+		expected        float64
+		percentile      float64
+		buckets         []float64
+		countsPerBucket []int64
+	}{
+		{
+			0,
+			0.5,
+			buckets,
+			normalDistribution,
+		},
+		{
+			0.69,
+			0.75,
+			buckets,
+			normalDistribution,
+		},
+		{
+			1.67,
+			0.95,
+			buckets,
+			normalDistribution,
+		},
+		{
+			2.33,
+			0.99,
+			buckets,
+			normalDistribution,
+		},
+	}
+
+	for _, tst := range tsts {
+		t.Run(fmt.Sprintf("%v", tst.percentile), func(t *testing.T) {
+			got := calculatePercentile(tst.percentile, tst.buckets, tst.countsPerBucket)
+
+			if math.Abs(tst.expected-got) > 0.1 {
+				t.Errorf("Expected: %v to be within 0.1 of %v", tst.expected, got)
+			}
+		})
+
+	}
+}
+
+// Given a seed and a set of latency buckets, uses rand.NormFloat64 to generate a normal distribution
+func calculateNormalDistribution(buckets []float64, seed int64, standardDeviation float64) []int64 {
+	r := rand.New(rand.NewSource(seed))
+
+	normalDistribution := make([]int64, len(buckets))
+	for n := 0; n < 1e6; n++ {
+		rnd := r.NormFloat64() * standardDeviation
+		var previousBucket float64
+		for bidx, bucket := range buckets {
+			if rnd > previousBucket && rnd <= bucket {
+				normalDistribution[bidx]++
+				break
+			}
+			previousBucket = bucket
+		}
+	}
+	return normalDistribution
 }

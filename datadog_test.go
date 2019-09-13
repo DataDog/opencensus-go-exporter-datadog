@@ -272,3 +272,48 @@ func TestHistogram(t *testing.T) {
 		t.Errorf("Expected: %v, Got: %v\n", vd, actual)
 	}
 }
+
+func TestPercentile_buildMetricNameForPercentile(t *testing.T) {
+	testCases := []struct {
+		Percentile float64
+		Expected   string
+	}{
+		{
+			0.5,
+			"50percentile",
+		},
+		{
+			0.75,
+			"75percentile",
+		},
+		{
+			0.92,
+			"92percentile",
+		},
+		{
+			0.95,
+			"95percentile",
+		},
+		{
+			0.99,
+			"99percentile",
+		},
+		{
+			0.995,
+			"995percentile",
+		},
+		{
+			0.999,
+			"999percentile",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%f", tc.Percentile), func(t *testing.T) {
+			got := buildMetricNameForPercentile(tc.Percentile)
+			if got != tc.Expected {
+				t.Errorf("Expected: %v, Got %v\n", tc.Expected, got)
+			}
+		})
+	}
+}
