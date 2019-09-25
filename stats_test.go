@@ -128,7 +128,12 @@ func TestDistributionData(t *testing.T) {
 			{
 				Tags: []tag.Tag{},
 				Data: &view.DistributionData{
-					CountPerBucket: make([]int64, 3),
+					CountPerBucket:  []int64{0, 2, 3},
+					Min:             1,
+					Max:             5,
+					Mean:            3,
+					SumOfSquaredDev: 10,
+					Count:           15,
 				},
 			},
 		},
@@ -142,14 +147,14 @@ func TestDistributionData(t *testing.T) {
 		result := string(buffer[:n])
 
 		expectedResult := []string{
-			`fooCount.avg:0.000000|g`,
-			`fooCount.count:0.000000|g`,
+			`fooCount.avg:3.000000|g`,
+			`fooCount.count:15.000000|g`,
 			`fooCount.count_per_bucket:0.000000|g|#bucket_idx:0`,
-			`fooCount.count_per_bucket:0.000000|g|#bucket_idx:1`,
-			`fooCount.count_per_bucket:0.000000|g|#bucket_idx:2`,
-			`fooCount.max:0.000000|g`,
-			`fooCount.min:0.000000|g`,
-			`fooCount.squared_dev_sum:0.000000|g`,
+			`fooCount.count_per_bucket:2.000000|g|#bucket_idx:1`,
+			`fooCount.count_per_bucket:3.000000|g|#bucket_idx:2`,
+			`fooCount.max:5.000000|g`,
+			`fooCount.min:1.000000|g`,
+			`fooCount.squared_dev_sum:10.000000|g`,
 		}
 
 		results := strings.Split(result, "\n")
@@ -169,11 +174,11 @@ func TestDistributionData(t *testing.T) {
 		result := string(buffer[:n])
 
 		expectedResult := []string{
-			`fooCount.avg:0.000000|g`,
-			`fooCount.count:0.000000|g`,
-			`fooCount.max:0.000000|g`,
-			`fooCount.min:0.000000|g`,
-			`fooCount.squared_dev_sum:0.000000|g`,
+			`fooCount.avg:3.000000|g`,
+			`fooCount.count:15.000000|g`,
+			`fooCount.max:5.000000|g`,
+			`fooCount.min:1.000000|g`,
+			`fooCount.squared_dev_sum:10.000000|g`,
 		}
 
 		results := strings.Split(result, "\n")
