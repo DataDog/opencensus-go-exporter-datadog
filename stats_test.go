@@ -7,8 +7,14 @@ package datadog
 
 import (
 	"fmt"
+	"io"
+	"net"
+	"sort"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/DataDog/datadog-go/statsd"
 
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -30,6 +36,18 @@ func testExporter(opts Options) (*testStatsExporter, error) {
 	view.RegisterExporter(e)
 	view.SetReportingPeriod(time.Millisecond)
 	return &testStatsExporter{e}, nil
+}
+
+func createServer(t *testing.T, addr string) (*net.UDPConn, error) {
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+	server, err := net.ListenUDP("udp", udpAddr)
+	if err != nil {
+		return nil, err
+	}
+	return server, nil
 }
 
 func TestAddViewData(t *testing.T) {
@@ -83,6 +101,89 @@ func TestUDSExportError(t *testing.T) {
 	if expected == nil {
 		t.Errorf("Expected an error")
 	}
+}
+func TestDistributionData(t *testing.T) {
+	addr := "localhost:1201"
+	server, _ := createServer(t, addr)
+
+	defer server.Close()
+
+	exporterCount, _ := testExporter(Options{
+		StatsAddr: addr,
+	})
+
+	exporterNoCount, _ := testExporter(Options{
+		StatsAddr:              addr,
+		DisableCountPerBuckets: true,
+	})
+
+	client, _ := statsd.NewBuffered(addr, 100)
+
+	exporterCount.client = client
+	exporterNoCount.client = client
+
+	data := &view.Data{
+		View: newView(view.Count()),
+		Rows: []*view.Row{
+			{
+				Tags: []tag.Tag{},
+				Data: &view.DistributionData{
+					CountPerBucket: make([]int64, 3),
+				},
+			},
+		},
+	}
+
+	t.Run("Test DistributionData", func(t *testing.T) {
+		exporterCount.statsExporter.addViewData(data)
+
+		buffer := make([]byte, 4096)
+		n, _ := io.ReadAtLeast(server, buffer, 1)
+		result := string(buffer[:n])
+
+		expectedResult := []string{
+			`fooCount.avg:0.000000|g`,
+			`fooCount.count:0.000000|g`,
+			`fooCount.count_per_bucket:0.000000|g|#bucket_idx:0`,
+			`fooCount.count_per_bucket:0.000000|g|#bucket_idx:1`,
+			`fooCount.count_per_bucket:0.000000|g|#bucket_idx:2`,
+			`fooCount.max:0.000000|g`,
+			`fooCount.min:0.000000|g`,
+			`fooCount.squared_dev_sum:0.000000|g`,
+		}
+
+		results := strings.Split(result, "\n")
+		sort.Strings(results)
+		for i, res := range results {
+			if res != expectedResult[i] {
+				t.Errorf("Got `%s`, expected `%s`", res, expectedResult[i])
+			}
+		}
+	})
+
+	t.Run("Test DistributionData with DisableCountPerBuckets true", func(t *testing.T) {
+		exporterNoCount.statsExporter.addViewData(data)
+
+		buffer := make([]byte, 4096)
+		n, _ := io.ReadAtLeast(server, buffer, 1)
+		result := string(buffer[:n])
+
+		expectedResult := []string{
+			`fooCount.avg:0.000000|g`,
+			`fooCount.count:0.000000|g`,
+			`fooCount.max:0.000000|g`,
+			`fooCount.min:0.000000|g`,
+			`fooCount.squared_dev_sum:0.000000|g`,
+		}
+
+		results := strings.Split(result, "\n")
+		sort.Strings(results)
+		for i, res := range results {
+			if res != expectedResult[i] {
+				t.Errorf("Got `%s`, expected `%s`", res, expectedResult[i])
+			}
+		}
+	})
 }
 
 func TestNilAggregation(t *testing.T) {
