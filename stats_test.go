@@ -129,77 +129,65 @@ func TestDistributionData(t *testing.T) {
 		},
 	}
 
-	t.Run("ok", func(t *testing.T) {
-		exporter, err := testExporter(Options{
-			StatsAddr: addr,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		exporter.client = client
-		exporter.statsExporter.addViewData(data)
+	testCases := map[string]struct {
+		Options         Options
+		ExpectedResults []string
+	}{
+		"ok": {
+			Options{
+				StatsAddr: addr,
+			},
+			[]string{
+				`fooCount.avg:3.000000|g`,
+				`fooCount.count:15.000000|g`,
+				`fooCount.count_per_bucket:0.000000|g|#bucket_idx:0`,
+				`fooCount.count_per_bucket:2.000000|g|#bucket_idx:1`,
+				`fooCount.count_per_bucket:3.000000|g|#bucket_idx:2`,
+				`fooCount.max:5.000000|g`,
+				`fooCount.min:1.000000|g`,
+				`fooCount.squared_dev_sum:10.000000|g`,
+			},
+		},
+		"disabled": {
+			Options{
+				StatsAddr:              addr,
+				DisableCountPerBuckets: true,
+			},
+			[]string{
+				`fooCount.avg:3.000000|g`,
+				`fooCount.count:15.000000|g`,
+				`fooCount.max:5.000000|g`,
+				`fooCount.min:1.000000|g`,
+				`fooCount.squared_dev_sum:10.000000|g`,
+			},
+		},
+	}
 
-		buffer := make([]byte, 4096)
-		n, err := io.ReadAtLeast(conn, buffer, 1)
-		if err != nil {
-			t.Fatal(err)
-		}
-		result := string(buffer[:n])
-
-		expectedResult := []string{
-			`fooCount.avg:3.000000|g`,
-			`fooCount.count:15.000000|g`,
-			`fooCount.count_per_bucket:0.000000|g|#bucket_idx:0`,
-			`fooCount.count_per_bucket:2.000000|g|#bucket_idx:1`,
-			`fooCount.count_per_bucket:3.000000|g|#bucket_idx:2`,
-			`fooCount.max:5.000000|g`,
-			`fooCount.min:1.000000|g`,
-			`fooCount.squared_dev_sum:10.000000|g`,
-		}
-
-		results := strings.Split(result, "\n")
-		sort.Strings(results)
-		for i, res := range results {
-			if res != expectedResult[i] {
-				t.Errorf("Got `%s`, expected `%s`", res, expectedResult[i])
+	for caseName, tc := range testCases {
+		t.Run(caseName, func(t *testing.T) {
+			exporter, err := testExporter(tc.Options)
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-	})
+			exporter.client = client
+			exporter.statsExporter.addViewData(data)
 
-	t.Run("count per buckets disabled", func(t *testing.T) {
-		exporter, err := testExporter(Options{
-			StatsAddr:              addr,
-			DisableCountPerBuckets: true,
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		exporter.client = client
-		exporter.statsExporter.addViewData(data)
-
-		buffer := make([]byte, 4096)
-		n, err := io.ReadAtLeast(conn, buffer, 1)
-		if err != nil {
-			t.Fatal(err)
-		}
-		result := string(buffer[:n])
-
-		expectedResult := []string{
-			`fooCount.avg:3.000000|g`,
-			`fooCount.count:15.000000|g`,
-			`fooCount.max:5.000000|g`,
-			`fooCount.min:1.000000|g`,
-			`fooCount.squared_dev_sum:10.000000|g`,
-		}
-
-		results := strings.Split(result, "\n")
-		sort.Strings(results)
-		for i, res := range results {
-			if res != expectedResult[i] {
-				t.Errorf("Got `%s`, expected `%s`", res, expectedResult[i])
+			buffer := make([]byte, 4096)
+			n, err := io.ReadAtLeast(conn, buffer, 1)
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-	})
+			result := string(buffer[:n])
+
+			results := strings.Split(result, "\n")
+			sort.Strings(results)
+			for i, res := range results {
+				if res != tc.ExpectedResults[i] {
+					t.Errorf("Got `%s`, expected `%s`", res, tc.ExpectedResults[i])
+				}
+			}
+		})
+	}
 }
 
 func TestNilAggregation(t *testing.T) {
