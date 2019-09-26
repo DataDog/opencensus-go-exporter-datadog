@@ -38,16 +38,12 @@ func testExporter(opts Options) (*testStatsExporter, error) {
 	return &testStatsExporter{e}, nil
 }
 
-func createServer(t *testing.T, addr string) (*net.UDPConn, error) {
+func createListenUDPConn(t *testing.T, addr string) (*net.UDPConn, error) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return nil, err
 	}
-	server, err := net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		return nil, err
-	}
-	return server, nil
+	return net.ListenUDP("udp", udpAddr)
 }
 
 func TestAddViewData(t *testing.T) {
@@ -103,24 +99,33 @@ func TestUDSExportError(t *testing.T) {
 	}
 }
 func TestDistributionData(t *testing.T) {
-	addr := "localhost:1201"
-	server, _ := createServer(t, addr)
+	conn, err := createListenUDPConn(t, "localhost:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
 
-	defer server.Close()
+	addr := conn.LocalAddr().String()
 
-	exporterCount, _ := testExporter(Options{
+	exporterCount, err := testExporter(Options{
 		StatsAddr: addr,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	exporterNoCount, _ := testExporter(Options{
+	exporterNoCount, err := testExporter(Options{
 		StatsAddr:              addr,
 		DisableCountPerBuckets: true,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	client, _ := statsd.NewBuffered(addr, 100)
-
-	exporterCount.client = client
-	exporterNoCount.client = client
+	client, err := statsd.NewBuffered(addr, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	data := &view.Data{
 		View: newView(view.Count()),
@@ -139,11 +144,15 @@ func TestDistributionData(t *testing.T) {
 		},
 	}
 
-	t.Run("Test DistributionData", func(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		exporterCount.client = client
 		exporterCount.statsExporter.addViewData(data)
 
 		buffer := make([]byte, 4096)
-		n, _ := io.ReadAtLeast(server, buffer, 1)
+		n, err := io.ReadAtLeast(conn, buffer, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
 		result := string(buffer[:n])
 
 		expectedResult := []string{
@@ -166,11 +175,15 @@ func TestDistributionData(t *testing.T) {
 		}
 	})
 
-	t.Run("Test DistributionData with DisableCountPerBuckets true", func(t *testing.T) {
+	t.Run("count per buckets disabled", func(t *testing.T) {
+		exporterNoCount.client = client
 		exporterNoCount.statsExporter.addViewData(data)
 
 		buffer := make([]byte, 4096)
-		n, _ := io.ReadAtLeast(server, buffer, 1)
+		n, err := io.ReadAtLeast(conn, buffer, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
 		result := string(buffer[:n])
 
 		expectedResult := []string{
