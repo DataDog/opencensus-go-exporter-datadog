@@ -38,7 +38,7 @@ func testExporter(opts Options) (*testStatsExporter, error) {
 	return &testStatsExporter{e}, nil
 }
 
-func createListenUDPConn(t *testing.T, addr string) (*net.UDPConn, error) {
+func listenUDP(addr string) (*net.UDPConn, error) {
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func TestUDSExportError(t *testing.T) {
 	}
 }
 func TestDistributionData(t *testing.T) {
-	conn, err := createListenUDPConn(t, "localhost:0")
+	conn, err := listenUDP("localhost:0")
 	if err != nil {
 		t.Fatal(err)
 	}
