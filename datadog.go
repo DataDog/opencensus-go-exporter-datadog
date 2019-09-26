@@ -73,6 +73,9 @@ type Options struct {
 	// GlobalTags holds a set of tags that will automatically be applied to all
 	// exported spans.
 	GlobalTags map[string]interface{}
+
+	// DisableCountPerBuckets specifies whether to emit count_per_bucket metrics
+	DisableCountPerBuckets bool
 }
 
 func (o *Options) onError(err error) {

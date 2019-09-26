@@ -7,8 +7,14 @@ package datadog
 
 import (
 	"fmt"
+	"io"
+	"net"
+	"sort"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/DataDog/datadog-go/statsd"
 
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
@@ -30,6 +36,14 @@ func testExporter(opts Options) (*testStatsExporter, error) {
 	view.RegisterExporter(e)
 	view.SetReportingPeriod(time.Millisecond)
 	return &testStatsExporter{e}, nil
+}
+
+func listenUDP(addr string) (*net.UDPConn, error) {
+	udpAddr, err := net.ResolveUDPAddr("udp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return net.ListenUDP("udp", udpAddr)
 }
 
 func TestAddViewData(t *testing.T) {
@@ -82,6 +96,97 @@ func TestUDSExportError(t *testing.T) {
 
 	if expected == nil {
 		t.Errorf("Expected an error")
+	}
+}
+func TestDistributionData(t *testing.T) {
+	conn, err := listenUDP("localhost:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	addr := conn.LocalAddr().String()
+
+	client, err := statsd.NewBuffered(addr, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	data := &view.Data{
+		View: newView(view.Count()),
+		Rows: []*view.Row{
+			{
+				Tags: []tag.Tag{},
+				Data: &view.DistributionData{
+					CountPerBucket:  []int64{0, 2, 3},
+					Min:             1,
+					Max:             5,
+					Mean:            3,
+					SumOfSquaredDev: 10,
+					Count:           15,
+				},
+			},
+		},
+	}
+
+	testCases := map[string]struct {
+		Options         Options
+		ExpectedResults []string
+	}{
+		"ok": {
+			Options{
+				StatsAddr: addr,
+			},
+			[]string{
+				`fooCount.avg:3.000000|g`,
+				`fooCount.count:15.000000|g`,
+				`fooCount.count_per_bucket:0.000000|g|#bucket_idx:0`,
+				`fooCount.count_per_bucket:2.000000|g|#bucket_idx:1`,
+				`fooCount.count_per_bucket:3.000000|g|#bucket_idx:2`,
+				`fooCount.max:5.000000|g`,
+				`fooCount.min:1.000000|g`,
+				`fooCount.squared_dev_sum:10.000000|g`,
+			},
+		},
+		"disabled": {
+			Options{
+				StatsAddr:              addr,
+				DisableCountPerBuckets: true,
+			},
+			[]string{
+				`fooCount.avg:3.000000|g`,
+				`fooCount.count:15.000000|g`,
+				`fooCount.max:5.000000|g`,
+				`fooCount.min:1.000000|g`,
+				`fooCount.squared_dev_sum:10.000000|g`,
+			},
+		},
+	}
+
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
+			exporter, err := testExporter(tc.Options)
+			if err != nil {
+				t.Fatal(err)
+			}
+			exporter.client = client
+			exporter.statsExporter.addViewData(data)
+
+			buffer := make([]byte, 4096)
+			n, err := io.ReadAtLeast(conn, buffer, 1)
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := string(buffer[:n])
+
+			results := strings.Split(result, "\n")
+			sort.Strings(results)
+			for i, res := range results {
+				if res != tc.ExpectedResults[i] {
+					t.Errorf("Got `%s`, expected `%s`", res, tc.ExpectedResults[i])
+				}
+			}
+		})
 	}
 }
 
