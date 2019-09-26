@@ -107,21 +107,6 @@ func TestDistributionData(t *testing.T) {
 
 	addr := conn.LocalAddr().String()
 
-	exporterCount, err := testExporter(Options{
-		StatsAddr: addr,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	exporterNoCount, err := testExporter(Options{
-		StatsAddr:              addr,
-		DisableCountPerBuckets: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	client, err := statsd.NewBuffered(addr, 100)
 	if err != nil {
 		t.Fatal(err)
@@ -145,8 +130,14 @@ func TestDistributionData(t *testing.T) {
 	}
 
 	t.Run("ok", func(t *testing.T) {
-		exporterCount.client = client
-		exporterCount.statsExporter.addViewData(data)
+		exporter, err := testExporter(Options{
+			StatsAddr: addr,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		exporter.client = client
+		exporter.statsExporter.addViewData(data)
 
 		buffer := make([]byte, 4096)
 		n, err := io.ReadAtLeast(conn, buffer, 1)
@@ -176,8 +167,15 @@ func TestDistributionData(t *testing.T) {
 	})
 
 	t.Run("count per buckets disabled", func(t *testing.T) {
-		exporterNoCount.client = client
-		exporterNoCount.statsExporter.addViewData(data)
+		exporter, err := testExporter(Options{
+			StatsAddr:              addr,
+			DisableCountPerBuckets: true,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		exporter.client = client
+		exporter.statsExporter.addViewData(data)
 
 		buffer := make([]byte, 4096)
 		n, err := io.ReadAtLeast(conn, buffer, 1)
