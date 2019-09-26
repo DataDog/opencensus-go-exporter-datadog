@@ -163,8 +163,8 @@ func TestDistributionData(t *testing.T) {
 		},
 	}
 
-	for caseName, tc := range testCases {
-		t.Run(caseName, func(t *testing.T) {
+	for name, tc := range testCases {
+		t.Run(name, func(t *testing.T) {
 			exporter, err := testExporter(tc.Options)
 			if err != nil {
 				t.Fatal(err)
