@@ -7,9 +7,9 @@ package datadog
 
 import (
 	"fmt"
+	"io"
 	"math"
 	"math/rand"
-	"io"
 	"net"
 	"sort"
 	"strings"
@@ -213,6 +213,85 @@ func TestNilAggregation(t *testing.T) {
 }
 
 func Test_calculatePercentile(t *testing.T) {
+	var buckets []float64
+	for i := 0.01; i < 100; i += 0.01 {
+		buckets = append(buckets, i)
+	}
+
+	var countsPerBucket []int64
+	for i := int64(0); i <= int64(len(buckets)); i += 1 {
+		countsPerBucket = append(countsPerBucket, 1)
+	}
+
+	testCases := []struct {
+		expected        float64
+		percentile      float64
+		buckets         []float64
+		countsPerBucket []int64
+	}{
+		{
+			0,
+			0,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			10,
+			0.1,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			50,
+			0.5,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			70,
+			0.70,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			81,
+			0.81,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			100,
+			1.0,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			99,
+			0.99,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			99.9,
+			0.999,
+			buckets,
+			countsPerBucket,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%v", tc.percentile), func(t *testing.T) {
+			got := calculatePercentile(tc.percentile, tc.buckets, tc.countsPerBucket)
+
+			if math.Abs(tc.expected-got) > 0.01 {
+				t.Errorf("Expected: %v to be within 0.1 of %v", tc.expected, got)
+			}
+		})
+
+	}
+}
+
+func Test_calculatePercentileStandard(t *testing.T) {
 	var buckets []float64
 	for i := float64(-100); i < 100; i += 0.1 {
 		buckets = append(buckets, i)

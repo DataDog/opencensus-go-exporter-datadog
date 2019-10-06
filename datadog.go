@@ -77,8 +77,10 @@ type Options struct {
 	// DisableCountPerBuckets specifies whether to emit count_per_bucket metrics
 	DisableCountPerBuckets bool
 
-	// HistogramPercentiles given a list of percentiles ["0.5", "0.95", "0.99"], for each one will estimate the
-	// percentile from the Distribution metric and emit a unique metric for each
+	// HistogramPercentiles specifies percentiles for Distribution metrics e.g. ["0.5", "0.95", "0.99"]
+	// For each percentile a metric is created e.g. metric_name.99percentile, metric_name.95percentile
+	// Note: precision of percentile metrics directly depend on granularity opencensus distribution buckets,
+	// more buckets granularity lead to better precision.
 	HistogramPercentiles []string
 }
 

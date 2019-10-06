@@ -138,7 +138,7 @@ func calculatePercentile(percentile float64, buckets []float64, countPerBucket [
 
 	var previousCount int64
 	for n, count := range cumulativePerBucket {
-		if atBin >= previousCount && atBin <= count {
+		if atBin >= previousCount && atBin <= count && n < len(buckets) {
 			return buckets[n]
 		}
 		previousCount = count
