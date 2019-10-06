@@ -108,8 +108,10 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 			"avg":             data.Mean,
 			"squared_dev_sum": data.SumOfSquaredDev,
 		}
-		for _, percentile := range s.percentiles {
-			metrics[buildMetricNameForPercentile(percentile)] = calculatePercentile(percentile, v.Aggregation.Buckets, data.CountPerBucket)
+		if len(v.Aggregation.Buckets) > 0 {
+			for _, percentile := range s.percentiles {
+				metrics[buildMetricNameForPercentile(percentile)] = calculatePercentile(percentile, v.Aggregation.Buckets, data.CountPerBucket)
+			}
 		}
 
 		for name, value := range metrics {

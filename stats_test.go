@@ -115,31 +115,37 @@ func TestDistributionData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	data := &view.Data{
-		View: newView(view.Count()),
-		Rows: []*view.Row{
-			{
-				Tags: []tag.Tag{},
-				Data: &view.DistributionData{
-					CountPerBucket:  []int64{0, 2, 3},
-					Min:             1,
-					Max:             5,
-					Mean:            3,
-					SumOfSquaredDev: 10,
-					Count:           15,
-				},
-			},
-		},
-	}
-
 	testCases := map[string]struct {
 		Options         Options
+		Bounds          []float64
 		ExpectedResults []string
 	}{
 		"ok": {
 			Options{
-				StatsAddr: addr,
+				StatsAddr:            addr,
+				HistogramPercentiles: []string{"0.5", "0.95", "0.99"},
 			},
+			[]float64{1, 2, 5},
+			[]string{
+				`fooCount.50percentile:2.000000|g`,
+				`fooCount.95percentile:5.000000|g`,
+				`fooCount.99percentile:5.000000|g`,
+				`fooCount.avg:3.000000|g`,
+				`fooCount.count:15.000000|g`,
+				`fooCount.count_per_bucket:0.000000|g|#bucket_idx:0`,
+				`fooCount.count_per_bucket:2.000000|g|#bucket_idx:1`,
+				`fooCount.count_per_bucket:3.000000|g|#bucket_idx:2`,
+				`fooCount.max:5.000000|g`,
+				`fooCount.min:1.000000|g`,
+				`fooCount.squared_dev_sum:10.000000|g`,
+			},
+		},
+		"empty bounds": {
+			Options{
+				StatsAddr:            addr,
+				HistogramPercentiles: []string{"0.5", "0.95", "0.99"},
+			},
+			[]float64{},
 			[]string{
 				`fooCount.avg:3.000000|g`,
 				`fooCount.count:15.000000|g`,
@@ -156,6 +162,7 @@ func TestDistributionData(t *testing.T) {
 				StatsAddr:              addr,
 				DisableCountPerBuckets: true,
 			},
+			[]float64{1, 2, 5},
 			[]string{
 				`fooCount.avg:3.000000|g`,
 				`fooCount.count:15.000000|g`,
@@ -168,6 +175,23 @@ func TestDistributionData(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
+			data := &view.Data{
+				View: newView(view.Distribution(tc.Bounds...)),
+				Rows: []*view.Row{
+					{
+						Tags: []tag.Tag{},
+						Data: &view.DistributionData{
+							CountPerBucket:  []int64{0, 2, 3},
+							Min:             1,
+							Max:             5,
+							Mean:            3,
+							SumOfSquaredDev: 10,
+							Count:           15,
+						},
+					},
+				},
+			}
+
 			exporter, err := testExporter(tc.Options)
 			if err != nil {
 				t.Fatal(err)
