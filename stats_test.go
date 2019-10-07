@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"math/rand"
 	"net"
 	"sort"
 	"strings"
@@ -236,7 +235,52 @@ func TestNilAggregation(t *testing.T) {
 	}
 }
 
-func Test_calculatePercentile(t *testing.T) {
+func TestPercentileName(t *testing.T) {
+	testCases := []struct {
+		Percentile float64
+		Expected   string
+	}{
+		{
+			0.5,
+			"50percentile",
+		},
+		{
+			0.75,
+			"75percentile",
+		},
+		{
+			0.92,
+			"92percentile",
+		},
+		{
+			0.95,
+			"95percentile",
+		},
+		{
+			0.99,
+			"99percentile",
+		},
+		{
+			0.995,
+			"995percentile",
+		},
+		{
+			0.999,
+			"999percentile",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%f", tc.Percentile), func(t *testing.T) {
+			got := percentileName(tc.Percentile)
+			if got != tc.Expected {
+				t.Errorf("Expected: %v, Got %v\n", tc.Expected, got)
+			}
+		})
+	}
+}
+
+func TestCalculatePercentile(t *testing.T) {
 	var buckets []float64
 	for i := 0.01; i < 100; i += 0.01 {
 		buckets = append(buckets, i)
@@ -244,7 +288,7 @@ func Test_calculatePercentile(t *testing.T) {
 
 	var countsPerBucket []int64
 	for i := int64(0); i <= int64(len(buckets)); i += 1 {
-		countsPerBucket = append(countsPerBucket, 1)
+		countsPerBucket = append(countsPerBucket, 10)
 	}
 
 	testCases := []struct {
@@ -313,77 +357,4 @@ func Test_calculatePercentile(t *testing.T) {
 		})
 
 	}
-}
-
-func Test_calculatePercentileStandard(t *testing.T) {
-	var buckets []float64
-	for i := float64(-100); i < 100; i += 0.1 {
-		buckets = append(buckets, i)
-	}
-
-	// Calculate a normal distribution with a standard deviation of 1.
-	normalDistribution := calculateNormalDistribution(buckets, 0, 1)
-
-	// The following tests can be confirmed using the Cumulative Standard Normal table (https://en.wikipedia.org/wiki/Standard_normal_table#Cumulative).
-	tsts := []struct {
-		expected        float64
-		percentile      float64
-		buckets         []float64
-		countsPerBucket []int64
-	}{
-		{
-			0,
-			0.5,
-			buckets,
-			normalDistribution,
-		},
-		{
-			0.69,
-			0.75,
-			buckets,
-			normalDistribution,
-		},
-		{
-			1.67,
-			0.95,
-			buckets,
-			normalDistribution,
-		},
-		{
-			2.33,
-			0.99,
-			buckets,
-			normalDistribution,
-		},
-	}
-
-	for _, tst := range tsts {
-		t.Run(fmt.Sprintf("%v", tst.percentile), func(t *testing.T) {
-			got := calculatePercentile(tst.percentile, tst.buckets, tst.countsPerBucket)
-
-			if math.Abs(tst.expected-got) > 0.1 {
-				t.Errorf("Expected: %v to be within 0.1 of %v", tst.expected, got)
-			}
-		})
-
-	}
-}
-
-// Given a seed and a set of latency buckets, uses rand.NormFloat64 to generate a normal distribution
-func calculateNormalDistribution(buckets []float64, seed int64, standardDeviation float64) []int64 {
-	r := rand.New(rand.NewSource(seed))
-
-	normalDistribution := make([]int64, len(buckets))
-	for n := 0; n < 1e6; n++ {
-		rnd := r.NormFloat64() * standardDeviation
-		var previousBucket float64
-		for bidx, bucket := range buckets {
-			if rnd > previousBucket && rnd <= bucket {
-				normalDistribution[bidx]++
-				break
-			}
-			previousBucket = bucket
-		}
-	}
-	return normalDistribution
 }

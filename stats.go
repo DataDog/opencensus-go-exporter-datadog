@@ -32,7 +32,7 @@ type statsExporter struct {
 	client      *statsd.Client
 	mu          sync.Mutex // mu guards viewData
 	viewData    map[string]*view.Data
-	percentiles []float64
+	percentiles map[string]float64
 }
 
 func newStatsExporter(o Options) (*statsExporter, error) {
@@ -46,16 +46,16 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 		return nil, err
 	}
 
-	percentiles := make([]float64, len(o.HistogramPercentiles))
-	for n, percentileStr := range o.HistogramPercentiles {
+	percentiles := make(map[string]float64, len(o.HistogramPercentiles))
+	for _, percentileStr := range o.HistogramPercentiles {
 		percentile, err := strconv.ParseFloat(percentileStr, 64)
 		if err != nil {
-			return nil, fmt.Errorf("'HistogramPercentiles' must be in float format: Received %s", percentileStr)
+			return nil, fmt.Errorf("'HistogramPercentiles' must be in float format, got %s", percentileStr)
 		}
 		if percentile < 0 || percentile > 1 {
-			return nil, fmt.Errorf("'HistogramPercentiles' must be between 0 and 1: Received %f", percentile)
+			return nil, fmt.Errorf("'HistogramPercentiles' must be between 0 and 1, got %f", percentile)
 		}
-		percentiles[n] = percentile
+		percentiles[percentileName(percentile)] = percentile
 	}
 
 	return &statsExporter{
@@ -109,8 +109,8 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 			"squared_dev_sum": data.SumOfSquaredDev,
 		}
 		if len(v.Aggregation.Buckets) > 0 {
-			for _, percentile := range s.percentiles {
-				metrics[buildMetricNameForPercentile(percentile)] = calculatePercentile(percentile, v.Aggregation.Buckets, data.CountPerBucket)
+			for name, percentile := range s.percentiles {
+				metrics[name] = calculatePercentile(percentile, v.Aggregation.Buckets, data.CountPerBucket)
 			}
 		}
 
@@ -128,14 +128,23 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 		return fmt.Errorf("aggregation %T is not supported", v.Aggregation)
 	}
 }
-
+// calculatePercentile return value for a given percentile using distribution buckets
+// percentile: target percentile we want the value to be returned
+// buckets: bucket bounds from distribution data
+// countPerBucket: number of data point for each bucket from distribution data
+//
+// Buckets and countPerBucket are used to compute the value for a specific percentile.
+// Caveat: the precision of the value return depend on the the granularity of the buckets.
 func calculatePercentile(percentile float64, buckets []float64, countPerBucket []int64) float64 {
+	// create intermediate cumulative buckets
 	cumulativePerBucket := make([]int64, len(countPerBucket))
 	var sum int64
 	for n, count := range countPerBucket {
 		sum += count
 		cumulativePerBucket[n] = sum
 	}
+
+	// search for the bucket corresponding the percentile
 	atBin := int64(math.Floor(percentile * float64(sum)))
 
 	var previousCount int64
@@ -148,9 +157,10 @@ func calculatePercentile(percentile float64, buckets []float64, countPerBucket [
 	return buckets[len(buckets)-1]
 }
 
-func buildMetricNameForPercentile(percentile float64) string {
+func percentileName(percentile float64) string {
+	multiplier := 100
 	if percentile > 0.99 {
-		return fmt.Sprintf("%dpercentile", int64(percentile*1000+0.5))
+		multiplier = 1000
 	}
-	return fmt.Sprintf("%dpercentile", int64(percentile*100+0.5))
+	return strconv.Itoa(int(percentile * float64(multiplier))) + "percentile"
 }

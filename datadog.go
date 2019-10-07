@@ -79,7 +79,7 @@ type Options struct {
 
 	// HistogramPercentiles specifies percentiles for Distribution metrics e.g. ["0.5", "0.95", "0.99"]
 	// For each percentile a metric is created e.g. metric_name.99percentile, metric_name.95percentile
-	// Note: precision of percentile metrics directly depend on granularity opencensus distribution buckets,
+	// Note: precision of percentile metrics directly depend on granularity of Opencensus distribution buckets,
 	// more buckets granularity lead to better precision.
 	HistogramPercentiles []string
 }
