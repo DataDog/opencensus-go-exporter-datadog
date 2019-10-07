@@ -358,3 +358,63 @@ func TestCalculatePercentile(t *testing.T) {
 
 	}
 }
+
+func TestCalculatePercentileTwoPower(t *testing.T) {
+	buckets := []float64{1, 2, 4, 8, 16, 32, 64, 128, 256}
+
+	countsPerBucket := []int64{10, 30, 60, 100, 20, 50, 100, 20, 9, 1}
+
+	testCases := []struct {
+		expected        float64
+		percentile      float64
+		buckets         []float64
+		countsPerBucket []int64
+	}{
+		{
+			8,
+			0.5,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			32,
+			0.6,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			64,
+			0.9,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			64,
+			0.9,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			128,
+			0.95,
+			buckets,
+			countsPerBucket,
+		},
+		{
+			256,
+			1,
+			buckets,
+			countsPerBucket,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("%v", tc.percentile), func(t *testing.T) {
+			got := calculatePercentile(tc.percentile, tc.buckets, tc.countsPerBucket)
+
+			if tc.expected != got {
+				t.Errorf("Expected: %v to be %v", tc.expected, got)
+			}
+		})
+	}
+}
