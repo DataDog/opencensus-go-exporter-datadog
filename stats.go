@@ -128,10 +128,9 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 		return fmt.Errorf("aggregation %T is not supported", v.Aggregation)
 	}
 }
-// calculatePercentile return value for a given percentile using distribution buckets
-// percentile: target percentile we want the value to be returned
-// buckets: bucket bounds from distribution data
-// countPerBucket: number of data point for each bucket from distribution data
+
+// calculatePercentile returns the percentile value using the specified distribution buckets bounds and
+// the number of data points for each bucket represented by countPerBucket.
 //
 // Buckets and countPerBucket are used to compute the value for a specific percentile.
 // Caveat: the precision of the value return depend on the the granularity of the buckets.
@@ -162,5 +161,5 @@ func percentileName(percentile float64) string {
 	if percentile > 0.99 {
 		multiplier = 1000
 	}
-	return strconv.Itoa(int(percentile * float64(multiplier))) + "percentile"
+	return strconv.Itoa(int(percentile*float64(multiplier))) + "percentile"
 }

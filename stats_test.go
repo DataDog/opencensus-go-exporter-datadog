@@ -190,7 +190,6 @@ func TestDistributionData(t *testing.T) {
 					},
 				},
 			}
-
 			exporter, err := testExporter(tc.Options)
 			if err != nil {
 				t.Fatal(err)
@@ -355,15 +354,12 @@ func TestCalculatePercentile(t *testing.T) {
 				t.Errorf("Expected: %v to be within 0.1 of %v", tc.expected, got)
 			}
 		})
-
 	}
 }
 
 func TestCalculatePercentileTwoPower(t *testing.T) {
 	buckets := []float64{1, 2, 4, 8, 16, 32, 64, 128, 256}
-
 	countsPerBucket := []int64{10, 30, 60, 100, 20, 50, 100, 20, 9, 1}
-
 	testCases := []struct {
 		expected        float64
 		percentile      float64
