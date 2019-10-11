@@ -29,6 +29,9 @@ func (e *testStatsExporter) view(name string) *view.View {
 }
 
 func testExporter(opts Options) (*testStatsExporter, error) {
+	if opts.OnError == nil {
+		opts.OnError = func(_ error) {}
+	}
 	e, err := NewExporter(opts)
 	if err != nil {
 		return nil, err
