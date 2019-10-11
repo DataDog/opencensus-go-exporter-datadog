@@ -33,9 +33,9 @@ func testExporter(opts Options) (*testStatsExporter, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer e.statsExporter.stop()
 	view.RegisterExporter(e)
 	view.SetReportingPeriod(time.Millisecond)
-	defer e.statsExporter.stop()
 	return &testStatsExporter{e}, nil
 }
 
