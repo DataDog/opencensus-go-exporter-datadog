@@ -109,6 +109,7 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 }
 
 func (s *statsExporter) stop() {
-	err := s.client.Close()
-	s.opts.onError(err)
+	if err := s.client.Close(); err != nil {
+		s.opts.onError(err)
+	}
 }
