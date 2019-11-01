@@ -212,3 +212,24 @@ func TestNilAggregation(t *testing.T) {
 		t.Errorf("Expected: %v, Got: %v", fmt.Errorf("aggregation *view.Aggregation is not supported"), actual)
 	}
 }
+
+func TestOnError(t *testing.T) {
+	var expected error
+
+	exporter, err := testExporter(Options{
+		StatsAddr: "unix:///invalid.socket",
+		OnError: func(err error) {
+			expected = err
+		},
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	exporter.statsExporter.client = nil
+	exporter.statsExporter.stop()
+
+	if expected == nil {
+		t.Errorf("Expected an error")
+	}
+}
