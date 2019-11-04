@@ -70,11 +70,11 @@ func TestUDPExportError(t *testing.T) {
 	}
 }
 
-func TestUDSExportError(t *testing.T) {
+func TestSubmitMetricError(t *testing.T) {
 	var expected error
 
 	exporter, err := testExporter(Options{
-		StatsAddr: "unix:///invalid.socket", // Ideally we wwouln't hit the filesystem.
+		StatsAddr: "unix:///dummy.socket",
 		OnError: func(err error) {
 			expected = err
 		},
@@ -88,7 +88,7 @@ func TestUDSExportError(t *testing.T) {
 		Rows: []*view.Row{
 			{
 				Tags: []tag.Tag{},
-				Data: &view.CountData{},
+				Data: nil,
 			},
 		},
 	}
