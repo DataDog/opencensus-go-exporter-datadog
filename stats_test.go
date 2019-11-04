@@ -29,10 +29,14 @@ func (e *testStatsExporter) view(name string) *view.View {
 }
 
 func testExporter(opts Options) (*testStatsExporter, error) {
+	if opts.OnError == nil {
+		opts.OnError = func(_ error) {}
+	}
 	e, err := NewExporter(opts)
 	if err != nil {
 		return nil, err
 	}
+	defer e.statsExporter.stop()
 	view.RegisterExporter(e)
 	view.SetReportingPeriod(time.Millisecond)
 	return &testStatsExporter{e}, nil
@@ -206,5 +210,26 @@ func TestNilAggregation(t *testing.T) {
 	actual := exporter.statsExporter.submitMetric(v, row, "fooNone")
 	if actual == nil {
 		t.Errorf("Expected: %v, Got: %v", fmt.Errorf("aggregation *view.Aggregation is not supported"), actual)
+	}
+}
+
+func TestOnError(t *testing.T) {
+	var expected error
+
+	exporter, err := testExporter(Options{
+		StatsAddr: "unix:///invalid.socket",
+		OnError: func(err error) {
+			expected = err
+		},
+	})
+	if err != nil {
+		t.Error(err)
+	}
+
+	exporter.statsExporter.client = nil
+	exporter.statsExporter.stop()
+
+	if expected == nil {
+		t.Errorf("Expected an error")
 	}
 }

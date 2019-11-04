@@ -39,11 +39,12 @@ func (e *Exporter) ExportSpan(s *trace.SpanData) {
 	e.traceExporter.exportSpan(s)
 }
 
-// Stop cleanly stops the exporter, flushing any remaining spans to the transport and
+// Stop cleanly stops the exporter, flushing any remaining spans and stats to the transport and
 // reporting any errors. Make sure to always call Stop at the end of your program in
 // order to not lose any tracing data. Only call Stop once per exporter. Repeated calls
 // will cause panic.
 func (e *Exporter) Stop() {
+	e.statsExporter.stop()
 	e.traceExporter.stop()
 }
 

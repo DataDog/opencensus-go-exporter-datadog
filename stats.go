@@ -107,3 +107,9 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 		return fmt.Errorf("aggregation %T is not supported", v.Aggregation)
 	}
 }
+
+func (s *statsExporter) stop() {
+	if err := s.client.Close(); err != nil {
+		s.opts.onError(err)
+	}
+}
