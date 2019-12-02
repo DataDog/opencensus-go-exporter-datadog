@@ -22,3 +22,19 @@ jobs:
                         go vet ./...
                         golint $(go list ./... | grep -v /vendor/)
                         INTEGRATION=1 go test -v -race ./...
+
+workflows:
+  version: 2
+  commit-workflow:
+    jobs:
+      - build
+  scheduled-workflow:
+    triggers:
+      - schedule:
+          cron: "0 1 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build
