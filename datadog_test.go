@@ -121,7 +121,7 @@ func TestSignature(t *testing.T) {
 	vd := newCustomView("fooGauge", view.Count(), tags, measureCount)
 
 	res := viewSignature(namespace, vd)
-	exp := "opencensus.fooGauge_signature"
+	exp := "opencensus.fooGauge"
 	if res != exp {
 		t.Errorf("Expected: %v, Got: %v\n", exp, res)
 	}
