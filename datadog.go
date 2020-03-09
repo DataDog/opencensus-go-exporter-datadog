@@ -125,9 +125,7 @@ func sanitizeMetricName(namespace string, v *view.View) string {
 func viewSignature(namespace string, v *view.View) string {
 	var buf strings.Builder
 	buf.WriteString(sanitizeMetricName(namespace, v))
-	for _, k := range v.TagKeys {
-		buf.WriteString("_" + k.Name())
-	}
+
 	return buf.String()
 }
 
