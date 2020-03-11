@@ -77,6 +77,9 @@ type Options struct {
 
 	// DisableCountPerBuckets specifies whether to emit count_per_bucket metrics
 	DisableCountPerBuckets bool
+
+	// Disable tags in metric name
+	DisableTagMetricName bool
 }
 
 func (o *Options) onError(err error) {
@@ -122,7 +125,16 @@ func sanitizeMetricName(namespace string, v *view.View) string {
 }
 
 // viewSignature creates the view signature with custom namespace
-func viewSignature(namespace string, v *view.View) string {
+func viewSignature(namespace string, disableTagMetricName bool, v *view.View) string {
+	if !disableTagMetricName {
+		var buf strings.Builder
+		buf.WriteString(sanitizeMetricName(namespace, v))
+		for _, k := range v.TagKeys {
+			buf.WriteString("_" + k.Name())
+		}
+		return buf.String()
+	}
+
 	return sanitizeMetricName(namespace, v)
 }
 

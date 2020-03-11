@@ -51,7 +51,7 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 }
 
 func (s *statsExporter) addViewData(vd *view.Data) {
-	sig := viewSignature(s.opts.Namespace, vd.View)
+	sig := viewSignature(s.opts.Namespace, s.opts.DisableTagMetricName, vd.View)
 	s.mu.Lock()
 	s.viewData[sig] = vd
 	s.mu.Unlock()
