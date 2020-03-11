@@ -123,10 +123,7 @@ func sanitizeMetricName(namespace string, v *view.View) string {
 
 // viewSignature creates the view signature with custom namespace
 func viewSignature(namespace string, v *view.View) string {
-	var buf strings.Builder
-	buf.WriteString(sanitizeMetricName(namespace, v))
-
-	return buf.String()
+	return sanitizeMetricName(namespace, v)
 }
 
 // tagMetrics concatenates user input custom tags with row tags
