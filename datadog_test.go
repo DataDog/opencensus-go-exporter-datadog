@@ -114,14 +114,27 @@ func TestSanitizeMetricName(t *testing.T) {
 	}
 }
 
-func TestSignature(t *testing.T) {
+func TestSignatureNoTag(t *testing.T) {
 	key, _ := tag.NewKey("signature")
 	namespace := "opencensus"
 	tags := append(testTags, key)
 	vd := newCustomView("fooGauge", view.Count(), tags, measureCount)
 
-	res := viewSignature(namespace, vd)
-	exp := "opencensus.fooGauge_signature"
+	res := viewSignature(namespace, false, vd)
+	exp := "opencensus.fooGauge"
+	if res != exp {
+		t.Errorf("Expected: %v, Got: %v\n", exp, res)
+	}
+}
+
+func TestSignatureTag(t *testing.T) {
+	key, _ := tag.NewKey("tag1")
+	namespace := "datadog"
+	tags := append(testTags, key)
+	vd := newCustomView("fooCount", view.Count(), tags, measureCount)
+
+	res := viewSignature(namespace, true, vd)
+	exp := "datadog.fooCount_tag1"
 	if res != exp {
 		t.Errorf("Expected: %v, Got: %v\n", exp, res)
 	}
