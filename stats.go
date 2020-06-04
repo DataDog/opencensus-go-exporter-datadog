@@ -94,7 +94,7 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 		}
 
 		for name, value := range metrics {
-			err = client.Gauge(metricName+"."+name, value, opt.tagMetrics(row.Tags, tags), rate)
+			err = client.Distribution(fmt.Sprintf("%s.%s", metricName, name), value, opt.tagMetrics(row.Tags, tags), rate)
 		}
 		if !s.opts.DisableCountPerBuckets {
 			for x := range data.CountPerBucket {
