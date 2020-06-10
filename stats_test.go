@@ -144,9 +144,9 @@ func TestDistributionData(t *testing.T) {
 			[]string{
 				`fooCount.avg:3|d`,
 				`fooCount.count:15|d`,
-				`fooCount.count_per_bucket:0|d|#bucket_idx:0`,
-				`fooCount.count_per_bucket:2|d|#bucket_idx:1`,
-				`fooCount.count_per_bucket:3|d|#bucket_idx:2`,
+				`fooCount.count_per_bucket:0|g|#bucket_idx:0`,
+				`fooCount.count_per_bucket:2|g|#bucket_idx:1`,
+				`fooCount.count_per_bucket:3|g|#bucket_idx:2`,
 				`fooCount.max:5|d`,
 				`fooCount.min:1|d`,
 				`fooCount.squared_dev_sum:10|d`,
