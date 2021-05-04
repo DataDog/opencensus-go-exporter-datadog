@@ -7,10 +7,9 @@ package datadog
 
 import (
 	"fmt"
-	"sync"
-
 	"github.com/DataDog/datadog-go/statsd"
 	"go.opencensus.io/stats/view"
+	"sync"
 )
 
 const (
@@ -30,6 +29,7 @@ type statsExporter struct {
 	client   *statsd.Client
 	mu       sync.Mutex // mu guards viewData
 	viewData map[string]*view.Data
+	countData map[string]int64
 }
 
 func newStatsExporter(o Options) (*statsExporter, error) {
@@ -46,6 +46,7 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 	return &statsExporter{
 		opts:     o,
 		viewData: make(map[string]*view.Data),
+		countData: make(map[string]int64),
 		client:   client,
 	}, nil
 }
@@ -76,7 +77,13 @@ func (s *statsExporter) submitMetric(v *view.View, row *view.Row, metricName str
 
 	switch data := row.Data.(type) {
 	case *view.CountData:
-		return client.Gauge(metricName, float64(data.Value), opt.tagMetrics(row.Tags, tags), rate)
+		// get a unique string for metric and associated tags
+		metricID := metricRowID(row, metricName)
+		// compute the difference of now and last collected period
+		submitData := data.Value - s.countData[metricID]
+		// update map with current value
+		s.countData[metricID] = data.Value
+		return client.Count(metricName, submitData, opt.tagMetrics(row.Tags, tags), rate)
 
 	case *view.SumData:
 		return client.Gauge(metricName, float64(data.Value), opt.tagMetrics(row.Tags, tags), rate)
@@ -112,4 +119,15 @@ func (s *statsExporter) stop() {
 	if err := s.client.Close(); err != nil {
 		s.opts.onError(err)
 	}
+}
+
+func metricRowID(row *view.Row, metricName string) string{
+	tgs := ""
+	for _,tag := range row.Tags{
+		tgs += tag.Key.Name() + ":" + tag.Value
+	}
+	if tgs != ""{
+		metricName += "|" + tgs
+	}
+	return metricName
 }
