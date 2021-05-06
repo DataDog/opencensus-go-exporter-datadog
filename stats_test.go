@@ -6,7 +6,9 @@
 package datadog
 
 import (
+	"context"
 	"fmt"
+	"go.opencensus.io/stats"
 	"io"
 	"net"
 	"sort"
@@ -102,6 +104,107 @@ func TestSubmitMetricError(t *testing.T) {
 		t.Errorf("Expected an error")
 	}
 }
+
+func TestSubmitCount(t *testing.T) {
+	conn, err := listenUDP("localhost:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	addr := conn.LocalAddr().String()
+
+	client, err := statsd.NewBuffered(addr, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fooCount := stats.Int64("fooCount", "fooDesc", stats.UnitDimensionless)
+
+	options := Options{
+		StatsAddr: addr,
+	}
+
+	exporter, err := testExporter(options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exporter.client = client
+
+	view.Register(
+		&view.View{
+			Name:        "fooCount",
+			Description: "fooDesc",
+			Measure:     fooCount,
+			Aggregation: view.Count(),
+		},
+	)
+	stats.Record(context.Background(), fooCount.M(1))
+
+	buffer := make([]byte, 4096)
+	n, err := io.ReadAtLeast(conn, buffer, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expectedResults := []string{
+		`fooCount:1|c`,
+		`fooCount:0|c`,
+	}
+	result := string(buffer[:n])
+
+	results := strings.Split(result, "\n")
+	results = results[:len(expectedResults)]
+	for i, res := range results {
+		if res != expectedResults[i] {
+			t.Errorf("Got `%s`, expected `%s`", res, expectedResults[i])
+		}
+	}
+
+	//data := &view.Data{
+	//	View: newView(view.Count()),
+	//	Rows: []*view.Row{
+	//		{
+	//			Tags: []tag.Tag{},
+	//			Data: &view.CountData{
+	//				Value: 1,
+	//			},
+	//		},
+	//	},
+	//}
+	//
+	//options := Options{
+	//	StatsAddr: addr,
+	//}
+	//expectedResults := []string{
+	//	`fooCount:1|c`,
+	//}
+	//
+	////for name, tc := range testCases {
+	//t.Run("countTest", func(t *testing.T) {
+	//	exporter, err := testExporter(options)
+	//	if err != nil {
+	//		t.Fatal(err)
+	//	}
+	//	exporter.client = client
+	//	exporter.statsExporter.addViewData(data)
+	//
+	//	buffer := make([]byte, 4096)
+	//	n, err := io.ReadAtLeast(conn, buffer, 1)
+	//	if err != nil {
+	//		t.Fatal(err)
+	//	}
+	//	result := string(buffer[:n])
+	//
+	//	results := strings.Split(result, "\n")
+	//	sort.Strings(results)
+	//	for i, res := range results {
+	//		if res != tc.ExpectedResults[i] {
+	//			t.Errorf("Got `%s`, expected `%s`", res, expectedResults[i])
+	//		}
+	//	}
+	//})
+}
+
 func TestDistributionData(t *testing.T) {
 	conn, err := listenUDP("localhost:0")
 	if err != nil {
