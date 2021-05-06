@@ -131,14 +131,13 @@ func TestSubmitCount(t *testing.T) {
 	}
 	exporter.client = client
 
-	view.Register(
-		&view.View{
-			Name:        "fooCount",
-			Description: "fooDesc",
-			Measure:     fooCount,
-			Aggregation: view.Count(),
-		},
-	)
+	fooCountView := &view.View{
+		Name:        "fooCount",
+		Description: "fooDesc",
+		Measure:     fooCount,
+		Aggregation: view.Count(),
+	}
+	view.Register(fooCountView)
 	stats.Record(context.Background(), fooCount.M(1))
 
 	buffer := make([]byte, 4096)
@@ -159,6 +158,7 @@ func TestSubmitCount(t *testing.T) {
 			t.Errorf("Got `%s`, expected `%s`", res, expectedResults[i])
 		}
 	}
+	view.Unregister(fooCountView)
 }
 
 func TestDistributionData(t *testing.T) {
