@@ -3,7 +3,7 @@ jobs:
      build:
           working_directory: /go/src/github.com/DataDog/opencensus-go-exporter-datadog
           docker:
-               - image: circleci/golang:1.10
+               - image: circleci/golang:1.14
                - image: datadog/docker-dd-agent
                  environment:
                  - DD_APM_ENABLED=true
