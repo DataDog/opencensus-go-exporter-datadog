@@ -323,6 +323,24 @@ func TestConvertSpan(t *testing.T) {
 	}
 }
 
+func TestServiceOverride(t *testing.T) {
+	e := newTraceExporter(Options{Service: "none"})
+	defer e.stop()
+
+	parent_annotated := spanPairs["root"].oc
+	parent_annotated.Attributes[ext.ServiceName] = "my-service"
+
+	parent_dd := e.convertSpan(parent_annotated)
+	if !reflect.DeepEqual(parent_dd, spanPairs["root"].dd) {
+		t.Fatalf("\nGot:\n%#v\n\nWant:\n%#v\n", parent_dd, spanPairs["root"].dd)
+	}
+
+	child_dd := e.convertSpan(spanPairs["child"].oc)
+	if !reflect.DeepEqual(child_dd, spanPairs["child"].dd) {
+		t.Fatalf("\nGot:\n%#v\n\nWant:\n%#v\n", child_dd, spanPairs["child"].dd)
+	}
+}
+
 func TestGlobalTags(t *testing.T) {
 	e := newTraceExporter(Options{
 		Service:    "my-service",
