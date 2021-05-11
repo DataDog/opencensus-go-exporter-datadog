@@ -77,9 +77,11 @@ func (e *traceExporter) convertSpan(s *trace.SpanData) *ddSpan {
 		}
 	case trace.SpanKindServer:
 		span.Type = "server"
-		fallthrough
-	default:
 		if code.status/100 == 5 {
+			span.Error = 1
+		}
+	default:
+		if code.status/100 == 4 || code.status/100 == 5 {
 			span.Error = 1
 		}
 	}

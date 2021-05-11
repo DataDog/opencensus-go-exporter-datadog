@@ -240,6 +240,43 @@ var spanPairs = map[string]struct {
 			},
 		},
 	},
+	"default_error_4xx": {
+		oc: &trace.SpanData{
+			SpanContext: trace.SpanContext{
+				TraceID:      trace.TraceID([16]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}),
+				SpanID:       trace.SpanID([8]byte{1, 2, 3, 4, 5, 6, 7, 8}),
+				TraceOptions: 1,
+			},
+			SpanKind:   trace.SpanKindUnspecified,
+			Name:       "/a/b",
+			StartTime:  testStartTime,
+			EndTime:    testEndTime,
+			Attributes: map[string]interface{}{},
+			Status: trace.Status{
+				Code:    trace.StatusCodeCancelled,
+				Message: "status-msg",
+			},
+		},
+		dd: &ddSpan{
+			TraceID:  651345242494996240,
+			SpanID:   72623859790382856,
+			Type:     "",
+			Name:     "opencensus",
+			Resource: "/a/b",
+			Start:    testStartTime.UnixNano(),
+			Duration: testEndTime.UnixNano() - testStartTime.UnixNano(),
+			Metrics:  map[string]float64{},
+			Error:    1,
+			Service:  "my-service",
+			Meta: map[string]string{
+				ext.ErrorMsg:         "status-msg",
+				ext.ErrorType:        "CANCELLED",
+				keyStatus:            "CANCELLED",
+				keyStatusCode:        "1",
+				keyStatusDescription: "status-msg",
+			},
+		},
+	},
 	"tags": {
 		oc: &trace.SpanData{
 			SpanContext: trace.SpanContext{
