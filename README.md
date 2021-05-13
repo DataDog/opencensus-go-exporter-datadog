@@ -5,6 +5,11 @@
 Provides OpenCensus stats and trace exporter support for Datadog Metrics and Datadog APM. The [examples folder](https://github.com/DataDog/opencensus-go-exporter-datadog/tree/master/examples)
 provides some simple usage examples.
 
+**Note**: OpenCensus and OpenTracing have merged into OpenTelemetry. It is recommended that OpenTelemetry alongside the 
+[Datadog OpenTelemetry Exporter](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/exporter/datadogexporter)
+be used in most cases. 
+
+
 ### Requirements:
 
 - [Go 1.10+](https://golang.org/doc/install)
