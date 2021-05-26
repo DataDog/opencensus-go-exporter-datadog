@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/DataDog/datadog-go/statsd"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.opencensus.io/trace"
@@ -80,6 +81,9 @@ type Options struct {
 
 	// TagMetricNames specifies whether to include tags to metric names.
 	TagMetricNames bool
+
+	// StatsdOptions defines a set of options to be passed to the statsd client.
+	StatsdOptions []statsd.Option
 }
 
 func (o *Options) onError(err error) {

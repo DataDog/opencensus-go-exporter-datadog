@@ -292,3 +292,63 @@ func TestOnError(t *testing.T) {
 		t.Errorf("Expected an error")
 	}
 }
+
+func TestStatsdOptions(t *testing.T) {
+	expected := "customnamespace.fooCount:1|c"
+	payloadMaxSize := len(expected) + 3
+	conn, err := listenUDP("localhost:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+
+	addr := conn.LocalAddr().String()
+
+	exporter, err := NewExporter(Options{
+		StatsAddr: addr,
+		StatsdOptions: []statsd.Option{
+			// Payload size is enough for one metric only
+			statsd.WithMaxBytesPerPayload(payloadMaxSize),
+			statsd.WithNamespace("customnamespace"),
+		},
+	})
+	if err != nil {
+		t.Error(err)
+	}
+	defer exporter.statsExporter.stop()
+	view.RegisterExporter(exporter)
+	view.SetReportingPeriod(100 * time.Millisecond)
+
+	if exporter.client.Namespace != "customnamespace." {
+		t.Errorf("Namespace expected: customnamespace, Got: %s", exporter.client.Namespace)
+	}
+
+	fooCount := stats.Int64("fooCount", "fooInc", stats.UnitDimensionless)
+	fooCountView := &view.View{
+		Name:        "fooCount",
+		Description: "fooInc",
+		Measure:     fooCount,
+		Aggregation: view.Count(),
+	}
+	barCount := stats.Int64("barCount", "barInc", stats.UnitDimensionless)
+	barCountView := &view.View{
+		Name:        "barCount",
+		Description: "barInc",
+		Measure:     barCount,
+		Aggregation: view.Count(),
+	}
+	view.Register(fooCountView, barCountView)
+
+	stats.Record(context.Background(), fooCount.M(1))
+	stats.Record(context.Background(), barCount.M(1))
+
+	buffer := make([]byte, 4096)
+	n, err := io.ReadAtLeast(conn, buffer, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(expected) != n {
+		t.Errorf("Expected: %s, Got: %s", expected, buffer)
+	}
+}
