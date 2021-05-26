@@ -309,7 +309,7 @@ func TestStatsdOptions(t *testing.T) {
 		StatsdOptions: []statsd.Option{
 			// Payload size is enough for one metric only
 			statsd.WithMaxBytesPerPayload(payloadMaxSize),
-			statsd.WithNamespace("customnamespace"),
+			statsd.WithNamespace("customnamespace."),
 		},
 	})
 	if err != nil {
