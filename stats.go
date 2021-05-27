@@ -38,7 +38,7 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 		endpoint = DefaultStatsAddrUDP
 	}
 
-	client, err := statsd.New(endpoint)
+	client, err := statsd.New(endpoint, o.StatsdOptions...)
 	if err != nil {
 		return nil, err
 	}
