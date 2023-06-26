@@ -106,7 +106,7 @@ func TestSanitizeMetricName(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run("Testing sanitizeMetricName", func(t *testing.T) {
-			got := sanitizeMetricName(tc.namespace, tc.view)
+			got := sanitizeMetricName(tc.namespace, tc.view, false)
 			if got != tc.want {
 				t.Errorf("Expected: %v, Got: %v\n", tc.want, got)
 			}
@@ -120,7 +120,7 @@ func TestSignatureNoTag(t *testing.T) {
 	tags := append(testTags, key)
 	vd := newCustomView("fooGauge", view.Count(), tags, measureCount)
 
-	res := viewSignature(namespace, false, vd)
+	res := viewSignature(namespace, false, vd, true)
 	exp := "opencensus.fooGauge"
 	if res != exp {
 		t.Errorf("Expected: %v, Got: %v\n", exp, res)
@@ -133,7 +133,7 @@ func TestSignatureTag(t *testing.T) {
 	tags := append(testTags, key)
 	vd := newCustomView("fooCount", view.Count(), tags, measureCount)
 
-	res := viewSignature(namespace, true, vd)
+	res := viewSignature(namespace, true, vd, true)
 	exp := "datadog.fooCount_tag1"
 	if res != exp {
 		t.Errorf("Expected: %v, Got: %v\n", exp, res)

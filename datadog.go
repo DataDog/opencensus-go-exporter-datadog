@@ -84,6 +84,9 @@ type Options struct {
 
 	// StatsdOptions defines a set of options to be passed to the statsd client.
 	StatsdOptions []statsd.Option
+
+	// KeepOriginalNames specifies whether to sanitize metric names to match Datadog standards or leave as is.
+	KeepOriginalNames bool
 }
 
 func (o *Options) onError(err error) {
@@ -120,26 +123,29 @@ func sanitizeString(str string) string {
 
 // sanitizeMetricName formats the custom namespace and view name to
 // Datadog's metric naming convention
-func sanitizeMetricName(namespace string, v *view.View) string {
+func sanitizeMetricName(namespace string, v *view.View, keepOriginalNames bool) string {
+	sanitizedString := v.Name
+	if !keepOriginalNames {
+		sanitizedString = sanitizeString(v.Name)
+	}
 	if namespace != "" {
 		namespace = strings.Replace(namespace, " ", "", -1)
-		return sanitizeString(namespace) + "." + sanitizeString(v.Name)
+		return sanitizeString(namespace) + "." + sanitizedString
 	}
-	return sanitizeString(v.Name)
+	return sanitizedString
 }
 
 // viewSignature creates the view signature with custom namespace
-func viewSignature(namespace string, tagMetricNames bool, v *view.View) string {
+func viewSignature(namespace string, tagMetricNames bool, v *view.View, keepOriginalNames bool) string {
 	if tagMetricNames {
 		var buf strings.Builder
-		buf.WriteString(sanitizeMetricName(namespace, v))
+		buf.WriteString(sanitizeMetricName(namespace, v, keepOriginalNames))
 		for _, k := range v.TagKeys {
 			buf.WriteString("_" + k.Name())
 		}
 		return buf.String()
 	}
-
-	return sanitizeMetricName(namespace, v)
+	return sanitizeMetricName(namespace, v, keepOriginalNames)
 }
 
 // tagMetrics concatenates user input custom tags with row tags

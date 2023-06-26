@@ -8,13 +8,14 @@ package datadog
 import (
 	"context"
 	"fmt"
-	"go.opencensus.io/stats"
 	"io"
 	"net"
 	"sort"
 	"strings"
 	"testing"
 	"time"
+
+	"go.opencensus.io/stats"
 
 	"github.com/DataDog/datadog-go/statsd"
 
@@ -350,5 +351,62 @@ func TestStatsdOptions(t *testing.T) {
 
 	if len(expected) != n {
 		t.Errorf("Expected: %s, Got: %s", expected, buffer)
+	}
+
+	view.Unregister(fooCountView, barCountView)
+}
+
+func TestSanitationOption(t *testing.T) {
+	keepNames := []bool{true, false}
+	for _, k := range keepNames {
+		expected := "testing.io/metric_name:1|c"
+		if k == false {
+			expected = "testing_io_metric_name:1|c"
+		}
+		conn, err := listenUDP("localhost:0")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer conn.Close()
+
+		addr := conn.LocalAddr().String()
+
+		exporter, err := NewExporter(Options{
+			StatsAddr:         addr,
+			KeepOriginalNames: k,
+		})
+		if err != nil {
+			t.Error(err)
+		}
+		defer exporter.statsExporter.stop()
+
+		view.RegisterExporter(exporter)
+
+		count := stats.Int64("testing.io/metric_name", "testing metric name", stats.UnitDimensionless)
+		countView := &view.View{
+			Name:        "testing.io/metric_name",
+			Description: "testing metric name",
+			Measure:     count,
+			Aggregation: view.Count(),
+		}
+
+		view.Register(countView)
+
+		stats.Record(context.Background(), count.M(1))
+
+		buffer := make([]byte, 4096)
+		n, err := io.ReadAtLeast(conn, buffer, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		result := string(buffer[:n])
+
+		if result != expected {
+			t.Errorf("Expected: %s, Got: %s", expected, result)
+		}
+
+		view.Unregister(countView)
+
 	}
 }

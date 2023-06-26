@@ -7,9 +7,10 @@ package datadog
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/DataDog/datadog-go/statsd"
 	"go.opencensus.io/stats/view"
-	"sync"
 )
 
 const (
@@ -25,10 +26,10 @@ const (
 
 // collector implements statsd.Client
 type statsExporter struct {
-	opts     Options
-	client   *statsd.Client
-	mu       sync.Mutex // mu guards viewData
-	viewData map[string]*view.Data
+	opts      Options
+	client    *statsd.Client
+	mu        sync.Mutex // mu guards viewData
+	viewData  map[string]*view.Data
 	countData map[string]int64
 }
 
@@ -44,15 +45,15 @@ func newStatsExporter(o Options) (*statsExporter, error) {
 	}
 
 	return &statsExporter{
-		opts:     o,
-		viewData: make(map[string]*view.Data),
+		opts:      o,
+		viewData:  make(map[string]*view.Data),
 		countData: make(map[string]int64),
-		client:   client,
+		client:    client,
 	}, nil
 }
 
 func (s *statsExporter) addViewData(vd *view.Data) {
-	sig := viewSignature(s.opts.Namespace, s.opts.TagMetricNames, vd.View)
+	sig := viewSignature(s.opts.Namespace, s.opts.TagMetricNames, vd.View, s.opts.KeepOriginalNames)
 	s.mu.Lock()
 	s.viewData[sig] = vd
 	s.mu.Unlock()
@@ -121,12 +122,12 @@ func (s *statsExporter) stop() {
 	}
 }
 
-func metricRowID(row *view.Row, metricName string) string{
+func metricRowID(row *view.Row, metricName string) string {
 	tgs := ""
-	for _,tag := range row.Tags{
+	for _, tag := range row.Tags {
 		tgs += tag.Key.Name() + ":" + tag.Value
 	}
-	if tgs != ""{
+	if tgs != "" {
 		metricName += "|" + tgs
 	}
 	return metricName
